@@ -23,6 +23,25 @@ interface AccidentDao {
     @Query("SELECT * FROM accident")
     fun getAll(): List<AccidentEntity>
 
+    @Query(
+        """
+        SELECT * FROM accident 
+        WHERE latitude IS NOT NULL 
+        AND longitude IS NOT NULL
+        AND latitude BETWEEN :minLat AND :maxLat
+        AND longitude BETWEEN :minLon AND :maxLon
+        ORDER BY RANDOM()
+        LIMIT :limit
+        """
+    )
+    fun getAccidentsInBoundsSampled(
+        minLat: Double,
+        maxLat: Double,
+        minLon: Double,
+        maxLon: Double,
+        limit: Int
+    ): List<AccidentEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(accidents: List<AccidentEntity>)
 }
