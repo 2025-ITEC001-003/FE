@@ -1,7 +1,8 @@
 package com.example.jesafe.ui.map
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import android.util.Log
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jesafe.data.local.AccidentEntity
@@ -14,13 +15,13 @@ import javax.inject.Inject
 class MapViewModel @Inject constructor(
     private val repository: AccidentRepository
 ) : ViewModel() {
-
-    private val _accidents = MutableLiveData<List<AccidentEntity>>()
-    val accidents: LiveData<List<AccidentEntity>> = _accidents
+    private val _accidents = mutableStateOf<List<AccidentEntity>>(emptyList())
+    val accidents: State<List<AccidentEntity>> = _accidents
 
     fun loadAccidents() {
         viewModelScope.launch {
             _accidents.value = repository.getAllAccidents()
+            Log.d("MapViewModel", "Loaded ${_accidents.value} accidents")
         }
     }
 }
