@@ -7,8 +7,21 @@ import androidx.room.Query
 
 @Dao
 interface AccidentDao {
+    @Query(
+        """
+        SELECT 
+            ROUND(latitude / 0.05, 0) * 0.05 AS latCenter,
+            ROUND(longitude / 0.05, 0) * 0.05 AS lonCenter,
+            COUNT(*) AS count
+        FROM accident
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        GROUP BY latCenter, lonCenter
+    """
+    )
+    fun getAccidentsGroupedByGrid(): List<GridCell>
+
     @Query("SELECT * FROM accident")
-    suspend fun getAll(): List<AccidentEntity>
+    fun getAll(): List<AccidentEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(accidents: List<AccidentEntity>)

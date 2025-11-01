@@ -1,14 +1,16 @@
 package com.example.jesafe.ui.map
 
-import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jesafe.data.local.AccidentEntity
+import com.example.jesafe.data.local.GridCell
 import com.example.jesafe.data.repository.AccidentRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -18,10 +20,22 @@ class MapViewModel @Inject constructor(
     private val _accidents = mutableStateOf<List<AccidentEntity>>(emptyList())
     val accidents: State<List<AccidentEntity>> = _accidents
 
-    fun loadAccidents() {
-        viewModelScope.launch {
-            _accidents.value = repository.getAllAccidents()
-            Log.d("MapViewModel", "Loaded ${_accidents.value} accidents")
+    private val _gridData = mutableStateOf<List<GridCell>>(emptyList())
+    val gridData: State<List<GridCell>> = _gridData
+
+    fun loadAccidents(zoom: Float) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (zoom < 11f) {
+                val gridList = repository.getAccidentsGroupedByGrid()
+                withContext(Dispatchers.Main) {
+                    _gridData.value = gridList
+                }
+            } else {
+                val accidentList = repository.getAllAccidents()
+                withContext(Dispatchers.Main) {
+                    _accidents.value = accidentList
+                }
+            }
         }
     }
 }

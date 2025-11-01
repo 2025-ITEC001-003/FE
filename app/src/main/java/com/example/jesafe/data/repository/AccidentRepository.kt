@@ -11,5 +11,6 @@ class AccidentRepository @Inject constructor(
     private val dao: AccidentDao
 ) {
     suspend fun getAllAccidents() = dao.getAll()
+    suspend fun getAccidentsGroupedByGrid() = dao.getAccidentsGroupedByGrid()
     suspend fun insertAll(accidents: List<AccidentEntity>) = dao.insertAll(accidents)
 }
