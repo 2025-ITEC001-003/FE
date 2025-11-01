@@ -1,2 +1,5 @@
 /build
 /kotlin
+
+# Secrets
+/app/secrets.properties
