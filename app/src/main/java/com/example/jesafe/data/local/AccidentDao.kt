@@ -12,7 +12,7 @@ interface AccidentDao {
         SELECT 
             ROUND(latitude / 0.05, 0) * 0.05 AS latCenter,
             ROUND(longitude / 0.05, 0) * 0.05 AS lonCenter,
-            COUNT(*) AS count
+            COUNT(*) AS accidentCount
         FROM accident
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         GROUP BY latCenter, lonCenter

@@ -25,17 +25,26 @@ class MapViewModel @Inject constructor(
 
     fun loadAccidents(zoom: Float) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (zoom < 11f) {
-                val gridList = repository.getAccidentsGroupedByGrid()
-                withContext(Dispatchers.Main) {
-                    _gridData.value = gridList
+            try {
+                println("DEBUG: Loading accidents with zoom: $zoom") // 디버그 로그
+
+                if (zoom < 11f) {
+                    val gridList = repository.getAccidentsGroupedByGrid()
+                    println("DEBUG: Grid data size: ${gridList.size}") // 디버그 로그
+                    withContext(Dispatchers.Main) {
+                        _gridData.value = gridList
+                    }
+                } else {
+                    val accidentList = repository.getAllAccidents()
+                    println("DEBUG: Accident data size: ${accidentList.size}") // 디버그 로그
+                    withContext(Dispatchers.Main) {
+                        _accidents.value = accidentList
+                    }
                 }
-            } else {
-                val accidentList = repository.getAllAccidents()
-                withContext(Dispatchers.Main) {
-                    _accidents.value = accidentList
-                }
+            } catch (e: Exception) {
+                println("DEBUG: Error loading accidents: ${e.message}") // 에러 로그
             }
         }
     }
 }
+

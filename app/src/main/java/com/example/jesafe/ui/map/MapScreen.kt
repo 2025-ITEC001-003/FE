@@ -4,61 +4,124 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.TileOverlayOptions
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.heatmaps.HeatmapTileProvider
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 @Composable
 fun MapScreen(viewModel: MapViewModel) {
-    // 1️⃣ 카메라 초기값 - 제주도 중심
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(
-            LatLng(33.38, 126.53), 10f // 제주도 중심 + 줌 기본값
-        )
+        position = CameraPosition.fromLatLngZoom(LatLng(33.38, 126.53), 10f)
     }
 
-    // 2️⃣ DB에서 사고 데이터 불러오기
     val accidents by viewModel.accidents
+    val gridData by viewModel.gridData
 
-    // 3️⃣ 지도 객체 상태
-    val context = LocalContext.current
-    var map by remember { mutableStateOf<GoogleMap?>(null) }
+    LaunchedEffect(cameraPositionState.position.zoom) {
+        viewModel.loadAccidents(cameraPositionState.position.zoom)
+    }
 
-    // 4️⃣ 지도 컴포저블
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
+        onMapLoaded = { viewModel.loadAccidents(cameraPositionState.position.zoom) }
+    ) {
 
-        ) {
-        // 5️⃣ 사고 데이터 → Heatmap 으로 변환
-        val accidentPoints = remember(accidents) {
-            accidents.mapNotNull { accident ->
-                if (accident.latitude != null && accident.longitude != null)
-                    LatLng(accident.latitude, accident.longitude)
-                else null
+        val currentZoom = cameraPositionState.position.zoom
+
+        // 줌 레벨 10-12: 그리드 기반 직사각형 히트맵
+        if (currentZoom in 10f..12f && gridData.isNotEmpty()) {
+            val maxCount = gridData.maxOfOrNull { it.accidentCount } ?: 1
+
+            gridData.forEach { grid ->
+                if (grid.accidentCount > 0) {
+                    val intensity = (grid.accidentCount.toFloat() / maxCount).coerceIn(0f, 1f)
+
+                    // 그리드 크기 (약 0.05도 = 약 5km)
+                    val gridSize = 0.025
+
+                    // 직사각형 꼭지점 계산
+                    val points = listOf(
+                        LatLng(grid.latCenter - gridSize, grid.lonCenter - gridSize), // 좌하단
+                        LatLng(grid.latCenter - gridSize, grid.lonCenter + gridSize), // 우하단
+                        LatLng(grid.latCenter + gridSize, grid.lonCenter + gridSize), // 우상단
+                        LatLng(grid.latCenter + gridSize, grid.lonCenter - gridSize)  // 좌상단
+                    )
+
+                    // 강도에 따른 색상 계산 (녹색 -> 노랑 -> 주황 -> 빨강)
+                    val color = when {
+                        intensity < 0.25f -> {
+                            // 녹색 영역
+                            val ratio = intensity / 0.25f
+                            ComposeColor(
+                                red = (102 + (255 - 102) * ratio) / 255f,
+                                green = (225 + (255 - 225) * ratio) / 255f,
+                                blue = (0f),
+                                alpha = 0.5f + intensity * 0.3f
+                            )
+                        }
+
+                        intensity < 0.5f -> {
+                            // 노랑 영역
+                            val ratio = (intensity - 0.25f) / 0.25f
+                            ComposeColor(
+                                red = 1f,
+                                green = 1f - (ratio * 0.35f),
+                                blue = 0f,
+                                alpha = 0.5f + intensity * 0.3f
+                            )
+                        }
+
+                        intensity < 0.75f -> {
+                            // 주황 영역
+                            val ratio = (intensity - 0.5f) / 0.25f
+                            ComposeColor(
+                                red = 1f,
+                                green = 0.65f - (ratio * 0.65f),
+                                blue = 0f,
+                                alpha = 0.6f + intensity * 0.3f
+                            )
+                        }
+
+                        else -> {
+                            // 빨강 영역
+                            ComposeColor(
+                                red = 1f,
+                                green = 0f,
+                                blue = 0f,
+                                alpha = 0.7f + intensity * 0.2f
+                            )
+                        }
+                    }
+
+                    Polygon(
+                        points = points,
+                        fillColor = color,
+                        strokeColor = color.copy(alpha = 0.8f),
+                        strokeWidth = 2f,
+                        clickable = false,
+                        geodesic = true
+                    )
+                }
             }
         }
 
-        // 6️⃣ Heatmap 생성 및 지도에 Overlay 추가
-        LaunchedEffect(accidentPoints) {
-            map?.let { googleMap ->
-                googleMap.clear() // 기존 레이어 제거
-                if (accidentPoints.isNotEmpty()) {
-                    val provider = HeatmapTileProvider.Builder()
-                        .data(accidentPoints)
-                        .radius(30)         // 점 번짐 반경 (조정 가능)
-                        .opacity(0.7)       // 투명도
-                        .build()
-                    googleMap.addTileOverlay(TileOverlayOptions().tileProvider(provider))
+        // 줌 레벨 12 이상: 개별 마커
+        if (currentZoom >= 12f) {
+            accidents.forEach { accident ->
+                if (accident.latitude != null && accident.longitude != null) {
+                    Marker(
+                        state = MarkerState(
+                            position = LatLng(accident.latitude, accident.longitude)
+                        ),
+                        title = accident.accidentType ?: "사고"
+                    )
                 }
             }
         }
