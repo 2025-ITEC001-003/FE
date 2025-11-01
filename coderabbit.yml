@@ -1,0 +1,15 @@
+version: 1
+
+language: "ko"
+
+comment_style: |
+  💡 **리뷰 가이드라인**
+  - 리뷰는 **친절하고 명확한 설명 중심**으로 작성해주세요.
+  - 불필요한 코드 중복, 구조적 비효율성을 지적하되, **개선 방향을 함께 제시**합니다.
+  - Kotlin, Jetpack Compose, Room, Hilt 관련 코드에서는 **안드로이드 베스트 프랙티스**를 기준으로 리뷰합니다.
+  - 문체는 “~입니다”, “~하는 것이 좋습니다” 형태로 통일해주세요.
+
+review:
+  auto_translate: true
+  summary_language: "ko"
+  tone: "friendly"
