@@ -1,30 +1,42 @@
 ---
-name: Feature Issue Template
-about: Suggest an idea for this project
-title: ''
-labels: ''
+name: Feature Request Template
+about: Suggest a new feature for this project
+title: '[FEATURE] '
+labels: 'enhancement'
 assignees: ''
 
 ---
 
-## [🎉기능 개선] 개선하는 주제
+## [🚀새로운 기능] 기능 제안
 
-### 1. 제안하는 해결 방안/기술 설계 (Proposed Solution/Technical Design)
-이 목표를 달성하기 위한 구체적인 기술적 접근 방식이나 설계 아이디어를 설명합니다. (예: 어떤 API를 사용/변경할지, 어떤 컴포넌트를 새로 만들지 등)
+### 📝 기능 설명 (Feature Description)
+추가하고자 하는 기능에 대해 명확하고 구체적으로 설명해주세요.
 
-### 2. 대체 방안 (Alternatives Considered)
-이 해결책 외에 고려했지만 채택하지 않은 다른 방식이 있다면 그 이유와 함께 설명합니다.
+### 🎯 문제 상황 및 동기 (Problem Statement)
+이 기능이 필요한 이유나 해결하고자 하는 문제를 설명해주세요.
+- 현재 어떤 불편함이나 제약이 있나요?
+- 이 기능이 없어서 발생하는 문제는 무엇인가요?
+
+### 💡 제안하는 해결책 (Proposed Solution)
+원하는 기능이 어떻게 동작해야 하는지 구체적으로 설명해주세요.
+- 사용자 관점에서의 동작 방식
+- 예상되는 UI/UX 변화
+
+### 🔧 기술적 고려사항 (Technical Considerations)
+- 예상되는 기술 스택이나 구현 방법
+- 기존 코드베이스와의 호환성
+- 성능이나 보안 관련 고려사항
+
+### 📋 대안 (Alternatives Considered)
+고려했지만 채택하지 않은 다른 접근법이 있다면 설명해주세요.
 
 ### ✅ 완료 기준 (Acceptance Criteria)
-이슈가 완벽하게 해결되었다고 판단할 수 있는 조건을 명확하게 나열합니다.
+기능이 완성되었다고 판단할 수 있는 구체적인 조건들을 나열해주세요.
 
-- [ ] (버그) 문제가 더 이상 재현되지 않아야 합니다.
+- [ ] 사용자가 [특정 동작]을 할 수 있어야 합니다
+- [ ] [특정 UI 요소]가 추가되어야 합니다
+- [ ] 기능에 대한 단위 테스트가 작성되어야 합니다
+- [ ] 사용자 문서가 업데이트되어야 합니다
 
-- [ ] (기능) 사용자 인터페이스에 [특정 요소]가 추가되어야 합니다.
-
-- [ ] (기술) 관련 유닛 테스트가 작성되어 모두 통과해야 합니다.
-
-- [ ] (기술) 관련 [문서]가 업데이트되어야 합니다.
-
-### 📌 추가 참고 사항 (Additional Notes)
-이슈 해결에 도움이 될 만한 링크, 의존성, 관련 이슈 번호 등을 추가로 기재합니다.
+### 📎 추가 자료 (Additional Context)
+관련 스크린샷, 목업, 참고 링크 등을 첨부해주세요.
