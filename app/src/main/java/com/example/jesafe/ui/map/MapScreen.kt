@@ -7,40 +7,45 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.CameraPosition
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.Polygon
-import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.clustering.ClusterManager
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
 @Composable
 fun MapScreen(viewModel: MapViewModel) {
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(
-            LatLng(MapConstants.DEFAULT_LAT, MapConstants.DEFAULT_LON),
-            MapConstants.DEFAULT_ZOOM
-        )
-    }
-
+    val context = LocalContext.current
     val accidents by viewModel.accidents
     val gridData by viewModel.gridData
     val isLoading by viewModel.isLoading
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // MapView 상태 관리
+    val mapView = remember { MapView(context) }
+    val googleMap = remember { androidx.compose.runtime.mutableStateOf<GoogleMap?>(null) }
+    val clusterManager = remember {
+        androidx.compose.runtime.mutableStateOf<ClusterManager<AccidentClusterItem>?>(null)
+    }
+    val currentZoom =
+        remember { androidx.compose.runtime.mutableFloatStateOf(MapConstants.DEFAULT_ZOOM) }
 
     // 에러 이벤트 수신 및 Snackbar 표시
     LaunchedEffect(Unit) {
@@ -52,31 +57,107 @@ fun MapScreen(viewModel: MapViewModel) {
         }
     }
 
-    // 지도 이동이 멈췄을 때만 데이터 로드 (성능 최적화)
-    LaunchedEffect(cameraPositionState) {
-        snapshotFlow { cameraPositionState.isMoving }
-            .debounce(MapConstants.DEBOUNCE_DELAY_MS)
-            .filter { !it } // 움직임이 멈췄을 때만
-            .collect {
-                val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
-                viewModel.loadAccidents(cameraPositionState.position.zoom, bounds)
+    // MapView 생명주기 관리
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.onCreate(null)
+                Lifecycle.Event.ON_START -> mapView.onStart()
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                else -> {}
             }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            mapView.onDestroy()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState
-        ) {
-            val currentZoom = cameraPositionState.position.zoom
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize()
+        ) { view ->
+            view.getMapAsync { map ->
+                if (googleMap.value == null) {
+                    googleMap.value = map
 
-            when {
-                currentZoom < MapConstants.ZOOM_THRESHOLD_GRID -> {
-                    RenderHeatmapGrid(gridData)
+                    // 지도 UI 설정
+                    map.uiSettings.apply {
+                        isZoomControlsEnabled = true
+                        isZoomGesturesEnabled = true
+                        isScrollGesturesEnabled = true
+                        isRotateGesturesEnabled = true
+                        isTiltGesturesEnabled = true
+                        isCompassEnabled = true
+                        isMyLocationButtonEnabled = false
+                    }
+
+                    // 초기 카메라 위치 설정
+                    map.moveCamera(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(MapConstants.DEFAULT_LAT, MapConstants.DEFAULT_LON),
+                            MapConstants.DEFAULT_ZOOM
+                        )
+                    )
+
+                    // 클러스터 매니저 초기화
+                    val manager = ClusterManager<AccidentClusterItem>(context, map)
+                    clusterManager.value = manager
+
+                    // 커스텀 렌더러 설정
+                    AccidentClusterRenderer(context, map, manager)
+
+                    // 지도 이벤트를 클러스터 매니저에 위임
+                    map.setOnCameraIdleListener {
+                        manager.onCameraIdle()
+
+                        // 줌 레벨과 화면 영역 가져오기
+                        val zoom = map.cameraPosition.zoom
+                        currentZoom.floatValue = zoom
+                        val bounds = map.projection.visibleRegion.latLngBounds
+
+                        // 데이터 로드
+                        coroutineScope.launch {
+                            viewModel.loadAccidents(zoom, bounds)
+                        }
+                    }
+
+                    map.setOnMarkerClickListener(manager)
+                    map.setInfoWindowAdapter(manager.markerManager)
+                    map.setOnInfoWindowClickListener(manager)
+
+                    // 초기 데이터 로드
+                    coroutineScope.launch {
+                        viewModel.loadAccidents(MapConstants.DEFAULT_ZOOM, null)
+                    }
                 }
+            }
+        }
 
-                currentZoom >= MapConstants.ZOOM_THRESHOLD_MARKERS -> {
-                    RenderAccidentMarkers(accidents)
+        // 데이터 변경 시 마커 업데이트
+        LaunchedEffect(accidents, gridData, currentZoom.floatValue) {
+            clusterManager.value?.let { manager ->
+                manager.clearItems()
+
+                when {
+                    // 줌 레벨 12 이상: 클러스터링된 마커 표시
+                    currentZoom.floatValue >= MapConstants.ZOOM_THRESHOLD_MARKERS -> {
+                        accidents.forEach { accident ->
+                            if (accident.latitude != null && accident.longitude != null) {
+                                val item = AccidentClusterItem(accident)
+                                manager.addItem(item)
+                            }
+                        }
+                        manager.cluster()
+                    }
+                    // 줌 레벨 10-12: 그리드 히트맵 (별도 처리 필요)
+                    // 여기서는 클러스터링 마커만 처리
                 }
             }
         }
@@ -100,69 +181,6 @@ fun MapScreen(viewModel: MapViewModel) {
     }
 }
 
-@Composable
-private fun RenderHeatmapGrid(gridData: List<com.example.jesafe.data.local.GridCell>) {
-    if (gridData.isEmpty()) return
-
-    val maxCount = gridData.maxOfOrNull { it.accidentCount } ?: 1
-
-    gridData.forEach { grid ->
-        if (grid.accidentCount > 0) {
-            HeatmapGridCell(grid, maxCount)
-        }
-    }
-}
-
-@Composable
-private fun HeatmapGridCell(
-    grid: com.example.jesafe.data.local.GridCell,
-    maxCount: Int
-) {
-    val intensity = (grid.accidentCount.toFloat() / maxCount).coerceIn(0f, 1f)
-    val gridSize = MapConstants.GRID_SIZE
-
-    val points = listOf(
-        LatLng(grid.latCenter - gridSize, grid.lonCenter - gridSize),
-        LatLng(grid.latCenter - gridSize, grid.lonCenter + gridSize),
-        LatLng(grid.latCenter + gridSize, grid.lonCenter + gridSize),
-        LatLng(grid.latCenter + gridSize, grid.lonCenter - gridSize)
-    )
-
-    val color = calculateHeatmapColor(intensity)
-
-    Polygon(
-        points = points,
-        fillColor = color,
-        strokeColor = color.copy(alpha = 0.8f),
-        strokeWidth = 2f,
-        clickable = false,
-        geodesic = true
-    )
-}
-
-@Composable
-private fun RenderAccidentMarkers(accidents: List<com.example.jesafe.data.local.AccidentEntity>) {
-    accidents.forEach { accident ->
-        if (accident.latitude != null && accident.longitude != null) {
-            AccidentMarker(accident)
-        }
-    }
-}
-
-@Composable
-private fun AccidentMarker(accident: com.example.jesafe.data.local.AccidentEntity) {
-    val markerColor = getMarkerColorForAccidentType(accident.accidentType)
-    val position = LatLng(accident.latitude!!, accident.longitude!!)
-    val markerState = remember(position) { MarkerState(position = position) }
-
-    Marker(
-        state = markerState,
-        title = accident.accidentType ?: "사고",
-        snippet = formatAccidentSnippet(accident),
-        icon = BitmapDescriptorFactory.defaultMarker(markerColor)
-    )
-}
-
 // 상수 객체
 private object MapConstants {
     const val DEFAULT_LAT = 33.38
@@ -171,69 +189,5 @@ private object MapConstants {
     const val ZOOM_THRESHOLD_GRID = 11f
     const val ZOOM_THRESHOLD_MARKERS = 12f
     const val GRID_SIZE = 0.025
-    const val DEBOUNCE_DELAY_MS = 500L // 지도 이동 후 대기 시간
-}
-
-// 색상 계산 함수
-private fun calculateHeatmapColor(intensity: Float): Color {
-    return when {
-        intensity < 0.25f -> {
-            val ratio = intensity / 0.25f
-            Color(
-                red = (102 + (255 - 102) * ratio) / 255f,
-                green = (225 + (255 - 225) * ratio) / 255f,
-                blue = 0f,
-                alpha = 0.5f + intensity * 0.3f
-            )
-        }
-
-        intensity < 0.5f -> {
-            val ratio = (intensity - 0.25f) / 0.25f
-            Color(
-                red = 1f,
-                green = 1f - (ratio * 0.35f),
-                blue = 0f,
-                alpha = 0.5f + intensity * 0.3f
-            )
-        }
-
-        intensity < 0.75f -> {
-            val ratio = (intensity - 0.5f) / 0.25f
-            Color(
-                red = 1f,
-                green = 0.65f - (ratio * 0.65f),
-                blue = 0f,
-                alpha = 0.6f + intensity * 0.3f
-            )
-        }
-
-        else -> {
-            Color(
-                red = 1f,
-                green = 0f,
-                blue = 0f,
-                alpha = 0.7f + intensity * 0.2f
-            )
-        }
-    }
-}
-
-// 사고 유형별 마커 색상
-private fun getMarkerColorForAccidentType(accidentType: String?): Float {
-    return when (accidentType?.uppercase()) {
-        "차대사람" -> BitmapDescriptorFactory.HUE_RED        // 빨강 - 가장 위험
-        "차대차" -> BitmapDescriptorFactory.HUE_ORANGE      // 주황
-        "차량단독" -> BitmapDescriptorFactory.HUE_YELLOW    // 노랑
-        "철길건널목" -> BitmapDescriptorFactory.HUE_MAGENTA  // 자주
-        else -> BitmapDescriptorFactory.HUE_AZURE           // 하늘색 - 기타
-    }
-}
-
-// 마커 스니펫 포맷팅
-private fun formatAccidentSnippet(accident: com.example.jesafe.data.local.AccidentEntity): String {
-    return buildString {
-        accident.reportDate?.let { append("날짜: $it\n") }
-        accident.season?.let { append("계절: $it\n") }
-        accident.temperature?.let { append("기온: ${it}°C") }
-    }.trim()
+    const val DEBOUNCE_DELAY_MS = 500L
 }
