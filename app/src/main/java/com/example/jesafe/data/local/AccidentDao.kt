@@ -18,10 +18,10 @@ interface AccidentDao {
         GROUP BY latCenter, lonCenter
     """
     )
-    fun getAccidentsGroupedByGrid(): List<GridCell>
+    suspend fun getAccidentsGroupedByGrid(): List<GridCell>
 
     @Query("SELECT * FROM accident")
-    fun getAll(): List<AccidentEntity>
+    suspend fun getAll(): List<AccidentEntity>
 
     @Query(
         """
@@ -34,7 +34,7 @@ interface AccidentDao {
         LIMIT :limit
         """
     )
-    fun getAccidentsInBoundsSampled(
+    suspend fun getAccidentsInBoundsSampled(
         minLat: Double,
         maxLat: Double,
         minLon: Double,

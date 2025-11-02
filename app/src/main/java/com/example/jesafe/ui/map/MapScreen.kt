@@ -1,12 +1,20 @@
 package com.example.jesafe.ui.map
 
-import android.annotation.SuppressLint
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -15,7 +23,11 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 
+@OptIn(FlowPreview::class)
 @Composable
 fun MapScreen(viewModel: MapViewModel) {
     val cameraPositionState = rememberCameraPositionState {
@@ -27,27 +39,64 @@ fun MapScreen(viewModel: MapViewModel) {
 
     val accidents by viewModel.accidents
     val gridData by viewModel.gridData
+    val isLoading by viewModel.isLoading
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(cameraPositionState.position.zoom, cameraPositionState.projection) {
-        val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
-        viewModel.loadAccidents(cameraPositionState.position.zoom, bounds)
+    // 에러 이벤트 수신 및 Snackbar 표시
+    LaunchedEffect(Unit) {
+        viewModel.errorEvent.collect { errorMessage ->
+            snackbarHostState.showSnackbar(
+                message = errorMessage,
+                withDismissAction = true
+            )
+        }
     }
 
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState
-    ) {
-        val currentZoom = cameraPositionState.position.zoom
-
-        when {
-            currentZoom < MapConstants.ZOOM_THRESHOLD_GRID -> {
-                RenderHeatmapGrid(gridData)
+    // 지도 이동이 멈췄을 때만 데이터 로드 (성능 최적화)
+    LaunchedEffect(cameraPositionState) {
+        snapshotFlow { cameraPositionState.isMoving }
+            .debounce(MapConstants.DEBOUNCE_DELAY_MS)
+            .filter { !it } // 움직임이 멈췄을 때만
+            .collect {
+                val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
+                viewModel.loadAccidents(cameraPositionState.position.zoom, bounds)
             }
+    }
 
-            currentZoom >= MapConstants.ZOOM_THRESHOLD_MARKERS -> {
-                RenderAccidentMarkers(accidents)
+    Box(modifier = Modifier.fillMaxSize()) {
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState
+        ) {
+            val currentZoom = cameraPositionState.position.zoom
+
+            when {
+                currentZoom < MapConstants.ZOOM_THRESHOLD_GRID -> {
+                    RenderHeatmapGrid(gridData)
+                }
+
+                currentZoom >= MapConstants.ZOOM_THRESHOLD_MARKERS -> {
+                    RenderAccidentMarkers(accidents)
+                }
             }
         }
+
+        // 로딩 인디케이터
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+            )
+        }
+
+        // Snackbar 호스트
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
     }
 }
 
@@ -100,15 +149,14 @@ private fun RenderAccidentMarkers(accidents: List<com.example.jesafe.data.local.
     }
 }
 
-@SuppressLint("UnrememberedMutableState")
 @Composable
 private fun AccidentMarker(accident: com.example.jesafe.data.local.AccidentEntity) {
     val markerColor = getMarkerColorForAccidentType(accident.accidentType)
+    val position = LatLng(accident.latitude!!, accident.longitude!!)
+    val markerState = remember(position) { MarkerState(position = position) }
 
     Marker(
-        state = MarkerState(
-            position = LatLng(accident.latitude!!, accident.longitude!!)
-        ),
+        state = markerState,
         title = accident.accidentType ?: "사고",
         snippet = formatAccidentSnippet(accident),
         icon = BitmapDescriptorFactory.defaultMarker(markerColor)
@@ -123,6 +171,7 @@ private object MapConstants {
     const val ZOOM_THRESHOLD_GRID = 11f
     const val ZOOM_THRESHOLD_MARKERS = 12f
     const val GRID_SIZE = 0.025
+    const val DEBOUNCE_DELAY_MS = 500L // 지도 이동 후 대기 시간
 }
 
 // 색상 계산 함수
@@ -188,4 +237,3 @@ private fun formatAccidentSnippet(accident: com.example.jesafe.data.local.Accide
         accident.temperature?.let { append("기온: ${it}°C") }
     }.trim()
 }
-

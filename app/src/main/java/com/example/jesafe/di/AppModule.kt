@@ -23,8 +23,8 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "accident_db"
-        ).fallbackToDestructiveMigration().build()
-            
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
+
 
     @Provides
     fun provideAccidentDao(db: AppDatabase): AccidentDao = db.accidentDao()
