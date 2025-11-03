@@ -17,12 +17,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen() {
+fun LoginScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -49,7 +51,7 @@ fun LoginScreen() {
                 .padding(horizontal = 24.dp),
         ) {
             // --- Top Part ---
-            Text("로그인", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.DarkGray)
+            Text("로그인", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
 
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -122,16 +124,12 @@ fun LoginScreen() {
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("계정이 없다면?", color = Color.Gray, fontSize = 14.sp)
-                    TextButton(onClick = { /*TODO*/ }) {
+                    TextButton(onClick = { navController.navigate("register") }) {
                         Text("회원가입", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Divider(color = Color(0xFFEDF1F3), thickness = 1.dp)
-
-                Spacer(modifier = Modifier.height(16.dp)) // Add some space at the very bottom
+                Spacer(modifier = Modifier.height(40.dp)) // 간격 조정
             }
         }
     }
@@ -141,6 +139,6 @@ fun LoginScreen() {
 @Composable
 fun LoginScreenPreview() {
     JeSafeTheme {
-        LoginScreen()
+        LoginScreen(rememberNavController())
     }
 }
