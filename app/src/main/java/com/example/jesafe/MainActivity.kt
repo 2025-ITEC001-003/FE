@@ -3,7 +3,7 @@ package com.example.jesafe
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.example.jesafe.ui.navigation.RootNavigation
+import com.example.jesafe.ui.navigation.AppNavigation
 import com.example.jesafe.ui.theme.JeSafeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             JeSafeTheme {
-                RootNavigation()
+                AppNavigation()
             }
         }
     }
