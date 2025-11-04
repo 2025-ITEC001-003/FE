@@ -1,5 +1,6 @@
 package com.example.jesafe.ui.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,11 +30,17 @@ fun LoginScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    // 뒤로가기 버튼을 누르면 이전 화면(MyInfoScreen)으로 돌아갑니다.
+    BackHandler {
+        navController.popBackStack()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { },
                 navigationIcon = {
+                    // 상단 뒤로가기 아이콘을 누르면 이전 화면(MyInfoScreen)으로 돌아갑니다.
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription = "Back", tint = Color.DarkGray)
                     }

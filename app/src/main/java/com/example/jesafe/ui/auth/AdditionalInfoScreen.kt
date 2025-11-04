@@ -21,10 +21,11 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdditionalInfoScreen(navController: NavController) {
+fun AdditionalInfoScreen(navController: NavController, name: String) { // name 파라미터 추가
     var birthYear by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
     var hasUnderlyingDisease by remember { mutableStateOf<Boolean?>(null) }
+    val isButtonEnabled = birthYear.isNotBlank() && gender.isNotBlank() && hasUnderlyingDisease != null
 
     Scaffold(
         topBar = {
@@ -118,10 +119,11 @@ fun AdditionalInfoScreen(navController: NavController) {
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Button(
-                    onClick = { navController.navigate("registration_complete") },
+                    onClick = { navController.navigate("registration_complete/$name") }, // 수정: 전달받은 이름을 다시 경로에 추가
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3)),
+                    enabled = isButtonEnabled
                 ) {
                     Text("완료", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
@@ -144,6 +146,7 @@ fun AdditionalInfoScreen(navController: NavController) {
 @Composable
 fun AdditionalInfoScreenPreview() {
     JeSafeTheme {
-        AdditionalInfoScreen(rememberNavController())
+        // Preview에서는 "홍길동"이라는 가짜 이름을 전달하여 테스트합니다.
+        AdditionalInfoScreen(rememberNavController(), "홍길동")
     }
 }

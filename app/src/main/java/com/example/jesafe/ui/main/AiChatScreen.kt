@@ -25,12 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
-data class Message(val text: String, val isUser: Boolean, val timestamp: String)
+data class Message(val id: Long, val text: String, val isUser: Boolean, val timestamp: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,11 +44,26 @@ fun AiChatScreen() {
 
     fun sendMessage() {
         if (text.isNotBlank()) {
-            val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            val newMessages = messages + Message(text, true, currentTime)
-            messages = newMessages + Message("...", false, currentTime)
-            text = "" // 입력창 초기화
+            val timeFormat = SimpleDateFormat("hh:mm a", Locale.KOREA)
+            timeFormat.timeZone = TimeZone.getTimeZone("Asia/Seoul")
+            
+            val currentTime = timeFormat.format(Date())
+            val userMessage = Message(System.currentTimeMillis(), text, true, currentTime)
+            val thinkingMessage = Message(System.currentTimeMillis() + 1, "...", false, "") 
+            
+            messages = messages + userMessage + thinkingMessage
+            text = "" 
+
             coroutineScope.launch {
+                listState.animateScrollToItem(0)
+                delay(1000)
+                val aiResponse = Message(
+                    id = thinkingMessage.id, 
+                    text = "AI의 샘플 답변입니다. 실제로는 여기에 LLM의 응답이 들어갑니다.", 
+                    isUser = false, 
+                    timestamp = timeFormat.format(Date())
+                )
+                messages = messages.map { if (it.id == thinkingMessage.id) aiResponse else it }
                 listState.animateScrollToItem(0)
             }
         }
@@ -71,7 +88,7 @@ fun AiChatScreen() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             reverseLayout = true
         ) {
-            items(messages.reversed()) { message ->
+            items(messages.reversed(), key = { it.id }) { message ->
                 MessageBubble(message)
             }
         }
@@ -89,6 +106,7 @@ fun MessageBubble(message: Message) {
                 Text(message.timestamp, fontSize = 10.sp, color = Color.Gray)
             }
             Card(
+                modifier = Modifier.widthIn(max = 280.dp), // 수정: 말풍선 최대 너비 제한
                 shape = RoundedCornerShape(
                     topStart = 16.dp, topEnd = 16.dp,
                     bottomStart = if (message.isUser) 16.dp else 0.dp,

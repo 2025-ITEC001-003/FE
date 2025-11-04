@@ -29,6 +29,8 @@ fun RegisterScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val isButtonEnabled = name.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+
 
     Scaffold(
         topBar = {
@@ -66,7 +68,8 @@ fun RegisterScreen(navController: NavController) {
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color(0xFFEDF1F3),
                     focusedBorderColor = Color(0xFF2CA0F3)
-                )
+                ),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -83,7 +86,8 @@ fun RegisterScreen(navController: NavController) {
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color(0xFFEDF1F3),
                     focusedBorderColor = Color(0xFF2CA0F3)
-                )
+                ),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -106,17 +110,19 @@ fun RegisterScreen(navController: NavController) {
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color(0xFFEDF1F3),
                     focusedBorderColor = Color(0xFF2CA0F3)
-                )
+                ),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Button(
-                    onClick = { navController.navigate("additional_info") },
+                    onClick = { navController.navigate("additional_info/$name") }, // 수정: 입력된 이름을 경로에 추가
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3)),
+                    enabled = isButtonEnabled
                 ) {
                     Text("다음으로", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
@@ -126,7 +132,7 @@ fun RegisterScreen(navController: NavController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("계정이 있다면?", color = Color.Gray, fontSize = 14.sp)
                     TextButton(onClick = { navController.navigate("login") }) {
-                        Text("로그인", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("회원가입", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
                 Spacer(modifier = Modifier.height(40.dp)) // 간격 조정
