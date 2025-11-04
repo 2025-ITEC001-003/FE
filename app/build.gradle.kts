@@ -39,6 +39,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -77,6 +78,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
@@ -86,6 +88,9 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.maps.utils.ktx)
     implementation(libs.maps.utils)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
 }
 
 
