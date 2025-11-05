@@ -2,6 +2,7 @@ package com.example.jesafe.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,6 +43,7 @@ fun AiChatScreen() {
     var text by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     fun sendMessage() {
         if (text.isNotBlank()) {
@@ -53,6 +56,7 @@ fun AiChatScreen() {
             
             messages = messages + userMessage + thinkingMessage
             text = "" 
+            focusManager.clearFocus() // 메시지 전송 후 포커스 해제
 
             coroutineScope.launch {
                 listState.animateScrollToItem(0)
@@ -84,7 +88,10 @@ fun AiChatScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { // 이 부분을 추가하여 키보드 숨김
+                    focusManager.clearFocus()
+                },
             verticalArrangement = Arrangement.spacedBy(12.dp),
             reverseLayout = true
         ) {
@@ -179,14 +186,14 @@ fun ChatInputField(
                     keyboardActions = KeyboardActions(onSend = { onSendMessage() }),
                     maxLines = 5
                 )
-                Spacer(Modifier.width(8.dp))
+                
                 // 텍스트 입력 여부에 따라 아이콘 변경
                 if (text.isNotBlank()) {
                     IconButton(onClick = onSendMessage) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color(0xFF2CA0F3))
                     }
                 } else {
-                    Icon(painterResource(id = R.drawable.ic_mic), contentDescription = "Mic", tint = Color.Gray, modifier = Modifier.size(24.dp))
+                    Icon(painterResource(id = R.drawable.ic_mic), contentDescription = "Mic", tint = Color.Gray, modifier = Modifier.size(24.dp).padding(start = 8.dp))
                 }
             }
         }
