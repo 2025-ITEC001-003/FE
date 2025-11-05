@@ -6,13 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
+import kotlinx.coroutines.delay
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
@@ -53,10 +54,15 @@ fun MainScreen(rootNavController: NavController) {
                 val currentDestination = navBackStackEntry?.destination
 
                 bottomNavItems.forEach { screen ->
+                    val isSelected = when {
+                        currentDestination?.route == "new_chat" && screen.route == BottomNavItem.ChatHistory.route -> true
+                        else -> currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    }
+
                     NavigationBarItem(
                         icon = { Icon(painterResource(id = screen.resourceId), contentDescription = screen.title, modifier = Modifier.size(24.dp)) },
                         label = { Text(screen.title, fontSize = 11.sp) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        selected = isSelected,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Color(0xFF2CA0F3),
                             selectedTextColor = Color(0xFF2CA0F3),
@@ -102,7 +108,6 @@ fun MainScreen(rootNavController: NavController) {
 @Composable
 fun HomeScreen(navController: NavController) {
     Box(modifier = Modifier.fillMaxSize()) {
-        // 지도 대신 임시 배경
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -221,9 +226,46 @@ data class ChatRoom(val id: Int, val title: String, val lastMessage: String, val
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatHistoryScreen(navController: NavController) {
-    // 샘플 데이터, "무한 스크롤"을 위해 아이템 개수 증가
-    val chatRooms = List(100) { i ->
-        ChatRoom(i, "제주도 동쪽 여행 계획 ${i + 1}", "네, 좋습니다. 추가로...", "오후 3:4${i % 10}")
+    var chatRooms by remember { mutableStateOf(listOf<ChatRoom>()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf(0) }
+    val itemsPerPage = 10
+
+    suspend fun loadMoreItems() {
+        if (isLoading) return
+        isLoading = true
+        delay(1000) // Simulate network delay
+        val newItems = List(itemsPerPage) { i ->
+            val id = page * itemsPerPage + i
+            ChatRoom(id, "제주도 동쪽 여행 계획 ${id + 1}", "네, 좋습니다. 추가로...", "오후 3:4${id % 10}")
+        }
+        chatRooms = chatRooms + newItems
+        page++
+        isLoading = false
+    }
+
+    LaunchedEffect(Unit) {
+        loadMoreItems()
+    }
+
+    val listState = rememberLazyListState()
+
+    val endOfListReached by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            if (layoutInfo.totalItemsCount == 0) {
+                false
+            } else {
+                visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
+            }
+        }
+    }
+
+    LaunchedEffect(endOfListReached) {
+        if (endOfListReached) {
+            loadMoreItems()
+        }
     }
 
     Scaffold(
@@ -238,17 +280,28 @@ fun ChatHistoryScreen(navController: NavController) {
         }
     ) { innerPadding ->
         LazyColumn(
-            // Scaffold로부터 받은 패딩을 먼저 적용하여 UI 요소(FAB)와 겹치지 않도록 합니다.
-            // 그 다음 fillMaxSize()를 호출하여 남은 공간을 모두 채웁니다.
+            state = listState,
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize(),
-            // 리스트 내부의 콘텐츠에 대한 패딩을 설정합니다.
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(chatRooms) { room ->
                 ChatHistoryItem(room)
+            }
+
+            if (isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
     }
@@ -273,7 +326,6 @@ fun ChatHistoryItem(room: ChatRoom) {
             Spacer(Modifier.width(16.dp))
             Text(room.timestamp, fontSize = 12.sp, color = Color.Gray)
         }
-
     }
 }
 
