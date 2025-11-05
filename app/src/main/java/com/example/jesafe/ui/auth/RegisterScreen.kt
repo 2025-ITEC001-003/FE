@@ -1,7 +1,5 @@
 package com.example.jesafe.ui.auth
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,7 +30,6 @@ fun RegisterScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val isButtonEnabled = name.isNotBlank() && email.isNotBlank() && password.isNotBlank()
-    val focusManager = LocalFocusManager.current
 
 
     Scaffold(
@@ -50,15 +46,12 @@ fun RegisterScreen(navController: NavController) {
                 )
             )
         }
-    ) {paddingValues ->
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 24.dp)
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { // 이 부분을 추가하여 키보드 숨김
-                    focusManager.clearFocus()
-                }
+                .padding(it)
+                .padding(horizontal = 24.dp),
         ) {
             Text("정보를 입력해주세요!", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
 

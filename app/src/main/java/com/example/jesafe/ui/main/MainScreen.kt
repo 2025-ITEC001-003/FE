@@ -4,15 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -23,7 +17,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +37,6 @@ import com.example.jesafe.ui.map.MapConstants
 import com.example.jesafe.ui.map.MapScreen
 import com.example.jesafe.ui.map.MapViewModel
 import com.example.jesafe.ui.theme.JeSafeTheme
-import kotlinx.coroutines.delay
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -54,14 +46,14 @@ import kotlinx.coroutines.launch
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
-    object ChatHistory : BottomNavItem("chat_history", R.drawable.ic_chat, "채팅 내역")
+    object AiChat : BottomNavItem("ai_chat", R.drawable.ic_chat, "AI 채팅")
     object MyInfo : BottomNavItem("my_info", R.drawable.ic_my_info, "내 정보")
 }
 
 @Composable
 fun MainScreen(rootNavController: NavController) {
     val navController = rememberNavController()
-    val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.ChatHistory, BottomNavItem.MyInfo)
+    val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.AiChat, BottomNavItem.MyInfo)
 
     Scaffold(
         bottomBar = {
@@ -72,12 +64,10 @@ fun MainScreen(rootNavController: NavController) {
                 val currentDestination = navBackStackEntry?.destination
 
                 bottomNavItems.forEach { screen ->
-                    val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route || (screen.route == "chat_history" && currentDestination.route == "new_chat") } == true
-                    
                     NavigationBarItem(
                         icon = { Icon(painterResource(id = screen.resourceId), contentDescription = screen.title, modifier = Modifier.size(24.dp)) },
                         label = { Text(screen.title, fontSize = 11.sp) },
-                        selected = isSelected,
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Color(0xFF2CA0F3),
                             selectedTextColor = Color(0xFF2CA0F3),
@@ -91,6 +81,7 @@ fun MainScreen(rootNavController: NavController) {
                                     saveState = true
                                 }
                                 launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
@@ -104,32 +95,20 @@ fun MainScreen(rootNavController: NavController) {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Home.route) {
-                HomeScreen(navController = navController)
                 val mapViewModel: MapViewModel = hiltViewModel()
                 HomeScreen(mapViewModel = mapViewModel)
             }
-            composable(BottomNavItem.ChatHistory.route) {
-                ChatHistoryScreen(navController = navController)
+            composable(BottomNavItem.AiChat.route) {
+                AiChatScreen()
             }
             composable(BottomNavItem.MyInfo.route) {
                 MyInfoScreen(rootNavController = rootNavController)
-            }
-            composable("new_chat") {
-                AiChatScreen()
             }
         }
     }
 }
 
 @Composable
-fun HomeScreen(navController: NavController) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF0A284D))
-        )
-        TopContent(navController = navController)
 fun HomeScreen(mapViewModel: MapViewModel) {
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
@@ -150,7 +129,6 @@ fun HomeScreen(mapViewModel: MapViewModel) {
 }
 
 @Composable
-fun TopContent(navController: NavController) {
 fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
     val scope = rememberCoroutineScope()
     Column(
@@ -227,12 +205,7 @@ fun TopContent() {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(4.dp),
-            modifier = Modifier.clickable { navController.navigate("new_chat") }
-        ) {
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(40.dp).background(Color(0xFF2CA0F3), CircleShape), contentAlignment = Alignment.Center) {
                     Icon(painterResource(id = R.drawable.ic_robot), contentDescription = "Bot", tint = Color.White, modifier = Modifier.size(24.dp))
@@ -267,6 +240,7 @@ fun TopContent() {
 fun BoxScope.BottomInfoSheet() {
     Box(modifier = Modifier.align(Alignment.BottomCenter)) {
         Card(
+            // 수정: 하단 여백을 줄여 탭 바 바로 위에 위치하도록 조정
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -287,7 +261,7 @@ fun BoxScope.BottomInfoSheet() {
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("3", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                        Text("근처 위험", fontSize = 12.sp, color = Color.Gray)
+                        Text("근처 위험", fontSize = 12.sp, color = Color.Gray) 
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("27", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
@@ -307,121 +281,12 @@ fun BoxScope.BottomInfoSheet() {
             contentDescription = "Call",
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 32.dp, bottom = 32.dp)
+                .padding(end = 32.dp, bottom = 32.dp) 
                 .size(60.dp)
                 .clickable { /* TODO: Handle call click */ }
         )
     }
 }
-
-data class ChatRoom(val id: Int, val title: String, val lastMessage: String, val timestamp: String)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ChatHistoryScreen(navController: NavController) {
-    var chatRooms by remember { mutableStateOf(listOf<ChatRoom>()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var page by remember { mutableStateOf(0) }
-    val itemsPerPage = 10
-
-    suspend fun loadMoreItems() {
-        if (isLoading) return
-        isLoading = true
-        delay(1000) // Simulate network delay
-        val newItems = List(itemsPerPage) { i ->
-            val id = page * itemsPerPage + i
-            ChatRoom(id, "제주도 동쪽 여행 계획 ${id + 1}", "네, 좋습니다. 추가로...", "오후 3:4${id % 10}")
-        }
-        chatRooms = chatRooms + newItems
-        page++
-        isLoading = false
-    }
-
-    LaunchedEffect(Unit) {
-        loadMoreItems()
-    }
-
-    val listState = rememberLazyListState()
-
-    val endOfListReached by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (layoutInfo.totalItemsCount == 0) {
-                false
-            } else {
-                visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
-            }
-        }
-    }
-
-    LaunchedEffect(endOfListReached) {
-        if (endOfListReached) {
-            loadMoreItems()
-        }
-    }
-
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("new_chat") },
-                containerColor = Color(0xFF2CA0F3),
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "New Chat")
-            }
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(chatRooms) { room ->
-                ChatHistoryItem(room)
-            }
-
-            if (isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ChatHistoryItem(room: ChatRoom) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(painter = painterResource(id = R.drawable.ic_chat), contentDescription = "Chat Icon", tint = Color.Gray, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(room.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(4.dp))
-                Text(room.lastMessage, fontSize = 14.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Spacer(Modifier.width(16.dp))
-            Text(room.timestamp, fontSize = 12.sp, color = Color.Gray)
-        }
-    }
-}
-
 
 @Preview(showBackground = true)
 @Composable
