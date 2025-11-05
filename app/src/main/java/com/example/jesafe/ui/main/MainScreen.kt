@@ -4,8 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -15,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +87,7 @@ fun MainScreen(rootNavController: NavController) {
                 HomeScreen(navController = navController)
             }
             composable(BottomNavItem.ChatHistory.route) {
-                ChatHistoryScreen()
+                ChatHistoryScreen(navController = navController)
             }
             composable(BottomNavItem.MyInfo.route) {
                 MyInfoScreen(rootNavController = rootNavController)
@@ -164,7 +169,6 @@ fun TopContent(navController: NavController) {
 fun BoxScope.BottomInfoSheet() {
     Box(modifier = Modifier.align(Alignment.BottomCenter)) {
         Card(
-            // 수정: 하단 여백을 줄여 탭 바 바로 위에 위치하도록 조정
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -185,7 +189,7 @@ fun BoxScope.BottomInfoSheet() {
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("3", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                        Text("근처 위험", fontSize = 12.sp, color = Color.Gray) 
+                        Text("근처 위험", fontSize = 12.sp, color = Color.Gray)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("27", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
@@ -205,19 +209,74 @@ fun BoxScope.BottomInfoSheet() {
             contentDescription = "Call",
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 32.dp, bottom = 32.dp) 
+                .padding(end = 32.dp, bottom = 32.dp)
                 .size(60.dp)
                 .clickable { /* TODO: Handle call click */ }
         )
     }
 }
 
+data class ChatRoom(val id: Int, val title: String, val lastMessage: String, val timestamp: String)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatHistoryScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("채팅 내역이 여기에 표시됩니다.", fontSize = 16.sp, color = Color.Gray)
+fun ChatHistoryScreen(navController: NavController) {
+    // 샘플 데이터, "무한 스크롤"을 위해 아이템 개수 증가
+    val chatRooms = List(100) { i ->
+        ChatRoom(i, "제주도 동쪽 여행 계획 ${i + 1}", "네, 좋습니다. 추가로...", "오후 3:4${i % 10}")
+    }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("new_chat") },
+                containerColor = Color(0xFF2CA0F3),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "New Chat")
+            }
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            // Scaffold로부터 받은 패딩을 먼저 적용하여 UI 요소(FAB)와 겹치지 않도록 합니다.
+            // 그 다음 fillMaxSize()를 호출하여 남은 공간을 모두 채웁니다.
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+            // 리스트 내부의 콘텐츠에 대한 패딩을 설정합니다.
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(chatRooms) { room ->
+                ChatHistoryItem(room)
+            }
+        }
     }
 }
+
+@Composable
+fun ChatHistoryItem(room: ChatRoom) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(painter = painterResource(id = R.drawable.ic_chat), contentDescription = "Chat Icon", tint = Color.Gray, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(room.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Text(room.lastMessage, fontSize = 14.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(room.timestamp, fontSize = 12.sp, color = Color.Gray)
+        }
+
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
