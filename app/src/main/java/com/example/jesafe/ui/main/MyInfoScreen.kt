@@ -24,7 +24,7 @@ fun MyInfoScreen(rootNavController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("내 정보", fontWeight = FontWeight.Bold) },
+                title = { },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
