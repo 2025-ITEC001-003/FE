@@ -54,11 +54,8 @@ fun MainScreen(rootNavController: NavController) {
                 val currentDestination = navBackStackEntry?.destination
 
                 bottomNavItems.forEach { screen ->
-                    val isSelected = when {
-                        currentDestination?.route == "new_chat" && screen.route == BottomNavItem.ChatHistory.route -> true
-                        else -> currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                    }
-
+                    val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route || (screen.route == "chat_history" && currentDestination.route == "new_chat") } == true
+                    
                     NavigationBarItem(
                         icon = { Icon(painterResource(id = screen.resourceId), contentDescription = screen.title, modifier = Modifier.size(24.dp)) },
                         label = { Text(screen.title, fontSize = 11.sp) },
@@ -76,7 +73,6 @@ fun MainScreen(rootNavController: NavController) {
                                     saveState = true
                                 }
                                 launchSingleTop = true
-                                restoreState = true
                             }
                         }
                     )

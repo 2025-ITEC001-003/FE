@@ -1,6 +1,8 @@
 package com.example.jesafe.ui.auth
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,6 +32,7 @@ fun LoginScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     // 뒤로가기 버튼을 누르면 이전 화면(MyInfoScreen)으로 돌아갑니다.
     BackHandler {
@@ -50,12 +54,15 @@ fun LoginScreen(navController: NavController) {
                 )
             )
         }
-    ) {
+    ) {paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
-                .padding(horizontal = 24.dp),
+                .padding(paddingValues)
+                .padding(horizontal = 24.dp)
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { // 이 부분을 추가하여 키보드 숨김
+                    focusManager.clearFocus()
+                }
         ) {
             // --- Top Part ---
             Text("로그인", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
