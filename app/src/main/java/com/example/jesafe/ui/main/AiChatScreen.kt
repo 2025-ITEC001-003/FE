@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -183,7 +183,7 @@ fun ChatInputField(
                 // 텍스트 입력 여부에 따라 아이콘 변경
                 if (text.isNotBlank()) {
                     IconButton(onClick = onSendMessage) {
-                        Icon(Icons.Default.Send, contentDescription = "Send", tint = Color(0xFF2CA0F3))
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color(0xFF2CA0F3))
                     }
                 } else {
                     Icon(painterResource(id = R.drawable.ic_mic), contentDescription = "Mic", tint = Color.Gray, modifier = Modifier.size(24.dp))
