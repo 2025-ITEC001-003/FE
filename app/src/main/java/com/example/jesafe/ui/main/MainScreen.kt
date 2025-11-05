@@ -30,14 +30,14 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
-    object AiChat : BottomNavItem("ai_chat", R.drawable.ic_chat, "AI 채팅")
+    object ChatHistory : BottomNavItem("chat_history", R.drawable.ic_chat, "채팅 내역")
     object MyInfo : BottomNavItem("my_info", R.drawable.ic_my_info, "내 정보")
 }
 
 @Composable
 fun MainScreen(rootNavController: NavController) {
     val navController = rememberNavController()
-    val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.AiChat, BottomNavItem.MyInfo)
+    val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.ChatHistory, BottomNavItem.MyInfo)
 
     Scaffold(
         bottomBar = {
@@ -79,20 +79,23 @@ fun MainScreen(rootNavController: NavController) {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Home.route) {
-                HomeScreen()
+                HomeScreen(navController = navController)
             }
-            composable(BottomNavItem.AiChat.route) {
-                AiChatScreen()
+            composable(BottomNavItem.ChatHistory.route) {
+                ChatHistoryScreen()
             }
             composable(BottomNavItem.MyInfo.route) {
                 MyInfoScreen(rootNavController = rootNavController)
+            }
+            composable("new_chat") {
+                AiChatScreen()
             }
         }
     }
 }
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(navController: NavController) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 지도 대신 임시 배경
         Box(
@@ -100,13 +103,13 @@ fun HomeScreen() {
                 .fillMaxSize()
                 .background(Color(0xFF0A284D))
         )
-        TopContent()
+        TopContent(navController = navController)
         BottomInfoSheet()
     }
 }
 
 @Composable
-fun TopContent() {
+fun TopContent(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -121,7 +124,12 @@ fun TopContent() {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(4.dp),
+            modifier = Modifier.clickable { navController.navigate("new_chat") }
+        ) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(40.dp).background(Color(0xFF2CA0F3), CircleShape), contentAlignment = Alignment.Center) {
                     Icon(painterResource(id = R.drawable.ic_robot), contentDescription = "Bot", tint = Color.White, modifier = Modifier.size(24.dp))
@@ -201,6 +209,13 @@ fun BoxScope.BottomInfoSheet() {
                 .size(60.dp)
                 .clickable { /* TODO: Handle call click */ }
         )
+    }
+}
+
+@Composable
+fun ChatHistoryScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text("채팅 내역이 여기에 표시됩니다.", fontSize = 16.sp, color = Color.Gray)
     }
 }
 
