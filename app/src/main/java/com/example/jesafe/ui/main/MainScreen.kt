@@ -13,6 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -31,8 +36,21 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
+import com.example.jesafe.data.local.AccidentDao
+import com.example.jesafe.data.local.AccidentEntity
+import com.example.jesafe.data.local.GridCell
+import com.example.jesafe.data.repository.AccidentRepository
+import com.example.jesafe.ui.map.MapConstants
+import com.example.jesafe.ui.map.MapScreen
+import com.example.jesafe.ui.map.MapViewModel
 import com.example.jesafe.ui.theme.JeSafeTheme
 import kotlinx.coroutines.delay
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.launch
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
@@ -87,6 +105,8 @@ fun MainScreen(rootNavController: NavController) {
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(navController = navController)
+                val mapViewModel: MapViewModel = hiltViewModel()
+                HomeScreen(mapViewModel = mapViewModel)
             }
             composable(BottomNavItem.ChatHistory.route) {
                 ChatHistoryScreen(navController = navController)
@@ -110,12 +130,89 @@ fun HomeScreen(navController: NavController) {
                 .background(Color(0xFF0A284D))
         )
         TopContent(navController = navController)
+fun HomeScreen(mapViewModel: MapViewModel) {
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(
+            LatLng(MapConstants.DEFAULT_LAT, MapConstants.DEFAULT_LON),
+            MapConstants.DEFAULT_ZOOM
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MapScreen(
+            viewModel = mapViewModel,
+            cameraPositionState = cameraPositionState
+        )
+        TopContent()
+        MapControlButtons(cameraPositionState = cameraPositionState)
         BottomInfoSheet()
     }
 }
 
 @Composable
 fun TopContent(navController: NavController) {
+fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
+    val scope = rememberCoroutineScope()
+    Column(
+        modifier = Modifier
+            .align(Alignment.CenterEnd)
+            .padding(end = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        FloatingActionButton(
+            onClick = { /* TODO: 현재 위치로 이동 */ },
+            shape = CircleShape,
+            containerColor = Color.White,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_my_location),
+                contentDescription = "Current Location",
+                tint = Color(0xFF2CA0F3),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        FloatingActionButton(
+            onClick = {
+                scope.launch {
+                    cameraPositionState.animate(CameraUpdateFactory.zoomIn(), 500)
+                }
+            },
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            containerColor = Color.White,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_add),
+                contentDescription = "Zoom In",
+                tint = Color.DarkGray,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(1.dp))
+        FloatingActionButton(
+            onClick = {
+                scope.launch {
+                    cameraPositionState.animate(CameraUpdateFactory.zoomOut(), 500)
+                }
+            },
+            shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+            containerColor = Color.White,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_remove),
+                contentDescription = "Zoom Out",
+                tint = Color.DarkGray,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun TopContent() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -328,8 +425,17 @@ fun ChatHistoryItem(room: ChatRoom) {
 
 @Preview(showBackground = true)
 @Composable
-fun MainScreenPreview() {
+fun HomeScreenPreview() {
+    val fakeDao = object : AccidentDao {
+        override suspend fun getAll(): List<AccidentEntity> = emptyList()
+        override suspend fun getAccidentsGroupedByGrid(): List<GridCell> = emptyList()
+        override suspend fun getAccidentsInBoundsSampled(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, limit: Int): List<AccidentEntity> = emptyList()
+        override suspend fun insertAll(accidents: List<AccidentEntity>) {}
+    }
+    val fakeRepository = AccidentRepository(fakeDao)
+    val previewViewModel = remember { MapViewModel(fakeRepository) }
+
     JeSafeTheme {
-        MainScreen(rememberNavController())
+        HomeScreen(mapViewModel = previewViewModel)
     }
 }

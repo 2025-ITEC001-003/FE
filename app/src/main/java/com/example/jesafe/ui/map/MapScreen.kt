@@ -15,28 +15,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.jesafe.data.local.AccidentEntity
+import com.example.jesafe.data.local.GridCell
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polygon
-import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 
 @OptIn(FlowPreview::class)
 @Composable
-fun MapScreen(viewModel: MapViewModel) {
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(
-            LatLng(MapConstants.DEFAULT_LAT, MapConstants.DEFAULT_LON),
-            MapConstants.DEFAULT_ZOOM
-        )
-    }
-
+fun MapScreen(
+    viewModel: MapViewModel,
+    cameraPositionState: CameraPositionState
+) {
     val accidents by viewModel.accidents
     val gridData by viewModel.gridData
     val isLoading by viewModel.isLoading
@@ -57,7 +55,7 @@ fun MapScreen(viewModel: MapViewModel) {
         snapshotFlow { cameraPositionState.isMoving }
             .debounce(MapConstants.DEBOUNCE_DELAY_MS)
             .filter { !it } // 움직임이 멈췄을 때만
-            .collect {
+            .collect { 
                 val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
                 viewModel.loadAccidents(cameraPositionState.position.zoom, bounds)
             }
@@ -101,7 +99,7 @@ fun MapScreen(viewModel: MapViewModel) {
 }
 
 @Composable
-private fun RenderHeatmapGrid(gridData: List<com.example.jesafe.data.local.GridCell>) {
+private fun RenderHeatmapGrid(gridData: List<GridCell>) {
     if (gridData.isEmpty()) return
 
     val maxCount = gridData.maxOfOrNull { it.accidentCount } ?: 1
@@ -115,7 +113,7 @@ private fun RenderHeatmapGrid(gridData: List<com.example.jesafe.data.local.GridC
 
 @Composable
 private fun HeatmapGridCell(
-    grid: com.example.jesafe.data.local.GridCell,
+    grid: GridCell,
     maxCount: Int
 ) {
     val intensity = (grid.accidentCount.toFloat() / maxCount).coerceIn(0f, 1f)
@@ -141,7 +139,7 @@ private fun HeatmapGridCell(
 }
 
 @Composable
-private fun RenderAccidentMarkers(accidents: List<com.example.jesafe.data.local.AccidentEntity>) {
+private fun RenderAccidentMarkers(accidents: List<AccidentEntity>) {
     accidents.forEach { accident ->
         if (accident.latitude != null && accident.longitude != null) {
             AccidentMarker(accident)
@@ -150,7 +148,7 @@ private fun RenderAccidentMarkers(accidents: List<com.example.jesafe.data.local.
 }
 
 @Composable
-private fun AccidentMarker(accident: com.example.jesafe.data.local.AccidentEntity) {
+private fun AccidentMarker(accident: AccidentEntity) {
     val markerColor = getMarkerColorForAccidentType(accident.accidentType)
     val position = LatLng(accident.latitude!!, accident.longitude!!)
     val markerState = remember(position) { MarkerState(position = position) }
@@ -164,7 +162,7 @@ private fun AccidentMarker(accident: com.example.jesafe.data.local.AccidentEntit
 }
 
 // 상수 객체
-private object MapConstants {
+object MapConstants {
     const val DEFAULT_LAT = 33.38
     const val DEFAULT_LON = 126.53
     const val DEFAULT_ZOOM = 10f
@@ -230,7 +228,7 @@ private fun getMarkerColorForAccidentType(accidentType: String?): Float {
 }
 
 // 마커 스니펫 포맷팅
-private fun formatAccidentSnippet(accident: com.example.jesafe.data.local.AccidentEntity): String {
+private fun formatAccidentSnippet(accident: AccidentEntity): String {
     return buildString {
         accident.reportDate?.let { append("날짜: $it\n") }
         accident.season?.let { append("계절: $it\n") }
