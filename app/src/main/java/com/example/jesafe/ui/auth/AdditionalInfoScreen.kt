@@ -1,8 +1,11 @@
 package com.example.jesafe.ui.auth
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +28,21 @@ fun AdditionalInfoScreen(navController: NavController, name: String) { // name �
     var birthYear by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
     var hasUnderlyingDisease by remember { mutableStateOf<Boolean?>(null) }
+
+    // Detailed disease states
+    val diseaseCategories = remember {
+        mutableStateMapOf(
+            "심혈관계 질환" to false,
+            "호흡기 질환" to false,
+            "내분비 질환" to false,
+            "신경계 질환" to false,
+            "정신 질환" to false,
+            "기타" to false
+        )
+    }
+    var specificDiseaseText by remember { mutableStateOf("") }
+    var showSpecificsInput by remember { mutableStateOf(false) }
+
     val isButtonEnabled = birthYear.isNotBlank() && gender.isNotBlank() && hasUnderlyingDisease != null
 
     Scaffold(
@@ -46,7 +64,8 @@ fun AdditionalInfoScreen(navController: NavController, name: String) { // name �
             modifier = Modifier
                 .fillMaxSize()
                 .padding(it)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Text("정보를 입력해주세요!", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
 
@@ -106,7 +125,11 @@ fun AdditionalInfoScreen(navController: NavController, name: String) { // name �
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Button(
-                    onClick = { hasUnderlyingDisease = false },
+                    onClick = {
+                        hasUnderlyingDisease = false
+                        showSpecificsInput = false
+                        diseaseCategories.keys.forEach { diseaseCategories[it] = false }
+                    },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = if(hasUnderlyingDisease == false) Color(0xFF2CA0F3) else Color.White, contentColor = if(hasUnderlyingDisease == false) Color.White else Color.Gray)
@@ -115,11 +138,81 @@ fun AdditionalInfoScreen(navController: NavController, name: String) { // name �
                 }
             }
 
+            if (hasUnderlyingDisease == true) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("질환 종류 선택 (중복 가능)", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
+                    if (showSpecificsInput) {
+                        TextButton(onClick = { showSpecificsInput = false }) {
+                            Text("수정")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                diseaseCategories.keys.forEach { category ->
+                    if (!showSpecificsInput || diseaseCategories.getValue(category)) {
+                        CheckboxRow(
+                            label = category,
+                            isChecked = diseaseCategories.getValue(category),
+                            onChecked = {
+                                if (!showSpecificsInput) {
+                                    diseaseCategories[category] = !diseaseCategories.getValue(category)
+                                }
+                            },
+                            enabled = !showSpecificsInput
+                        )
+                    }
+                }
+
+                val anyCategorySelected = diseaseCategories.containsValue(true)
+                if (anyCategorySelected && !showSpecificsInput) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { showSpecificsInput = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3))
+                    ) {
+                        Text("선택 완료")
+                    }
+                }
+
+                if (showSpecificsInput) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text("정확한 질환명을 입력해주세요.", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = specificDiseaseText,
+                        onValueChange = { specificDiseaseText = it },
+                        label = { Text("질환명 입력") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Color(0xFFEDF1F3),
+                            focusedBorderColor = Color(0xFF2CA0F3)
+                        )
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.weight(1f))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Button(
-                    onClick = { navController.navigate("registration_complete/$name") }, // 수정: 전달받은 이름을 다시 경로에 추가
+                    onClick = { navController.navigate("registration_complete/$name") },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3)),
@@ -136,9 +229,29 @@ fun AdditionalInfoScreen(navController: NavController, name: String) { // name �
                         Text("로그인", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
-                Spacer(modifier = Modifier.height(40.dp)) // 간격 조정
+                Spacer(modifier = Modifier.height(40.dp)) 
             }
         }
+    }
+}
+
+@Composable
+private fun CheckboxRow(label: String, isChecked: Boolean, onChecked: () -> Unit, enabled: Boolean = true) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onChecked)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = isChecked, 
+            onCheckedChange = { onChecked() }, 
+            enabled = enabled,
+            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2CA0F3))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label, color = if (enabled) Color.DarkGray else Color.Gray)
     }
 }
 
@@ -146,7 +259,6 @@ fun AdditionalInfoScreen(navController: NavController, name: String) { // name �
 @Composable
 fun AdditionalInfoScreenPreview() {
     JeSafeTheme {
-        // Preview에서는 "홍길동"이라는 가짜 이름을 전달하여 테스트합니다.
         AdditionalInfoScreen(rememberNavController(), "홍길동")
     }
 }

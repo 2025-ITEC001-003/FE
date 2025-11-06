@@ -1,12 +1,17 @@
 package com.example.jesafe.ui.main
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +26,33 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyInfoScreen(rootNavController: NavController) {
+    var name by remember { mutableStateOf("WWIT") }
+    var phoneNumber by remember { mutableStateOf("010-xxxx-0864") }
+    var email by remember { mutableStateOf("@gmail.com") }
+    var diseaseInfo by remember { mutableStateOf("고혈압, 당뇨 등") }
+
+    val navBackStackEntry = rootNavController.currentBackStackEntry
+
+    LaunchedEffect(navBackStackEntry) {
+        val newName = navBackStackEntry?.savedStateHandle?.get<String>("newName")
+        if (newName != null) {
+            name = newName
+            navBackStackEntry.savedStateHandle.remove<String>("newName")
+        }
+
+        val newEmail = navBackStackEntry?.savedStateHandle?.get<String>("newEmail")
+        if (newEmail != null) {
+            email = newEmail
+            navBackStackEntry.savedStateHandle.remove<String>("newEmail")
+        }
+
+        val newDiseaseInfo = navBackStackEntry?.savedStateHandle?.get<String>("newDiseaseInfo")
+        if (newDiseaseInfo != null) {
+            diseaseInfo = newDiseaseInfo
+            navBackStackEntry.savedStateHandle.remove<String>("newDiseaseInfo")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -28,78 +60,118 @@ fun MyInfoScreen(rootNavController: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        containerColor = Color.White
+        containerColor = Color(0xFFF2F2F7) // A light gray that matches system UI
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "로그인",
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 28.sp,
-                modifier = Modifier.clickable { rootNavController.navigate("login") } // "auth" 대신 "login"으로 수정
-            )
+            // Section: 내 정보 관리
+            SectionHeader(text = "내 정보 관리")
+            Column(Modifier.background(Color.White)) {
+                MyInfoRow(
+                    title = "이름",
+                    subtitle = name,
+                    onClick = { rootNavController.navigate("change_name") }
+                )
+                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                MyInfoRow(
+                    title = "휴대폰 번호",
+                    subtitle = phoneNumber,
+                    onClick = { rootNavController.navigate("change_phone_number") }
+                )
+                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                MyInfoRow(
+                    title = "이메일",
+                    subtitle = email,
+                    onClick = { rootNavController.navigate("change_email") }
+                )
+                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                MyInfoRow(
+                    title = "기저질환 관리",
+                    subtitle = diseaseInfo,
+                    onClick = { rootNavController.navigate("underlying_disease") }
+                )
+                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                MyInfoRow(
+                    title = "비밀번호 변경",
+                    onClick = { rootNavController.navigate("change_password") }
+                )
+                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                MyInfoRow(
+                    title = "알림 설정",
+                    onClick = { rootNavController.navigate("notification_settings") }
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                InfoButton(text = "채팅 문의", modifier = Modifier.weight(1f))
-                InfoButton(text = "자주 묻는 질문", modifier = Modifier.weight(1f))
+            // Section: 개인 설정 관리
+            SectionHeader(text = "개인 설정 관리")
+            Column(Modifier.background(Color.White)) {
+                MyInfoRow(title = "즐겨찾는 장소 관리")
+                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                MyInfoRow(title = "로그아웃", onClick = {
+                    rootNavController.navigate("login") {
+                        popUpTo(rootNavController.graph.id) {
+                            inclusive = true
+                        }
+                    }
+                })
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 안전 정보 섹션
-            SettingsMenuItem(text = "안전 정보") { /* TODO */ }
-            SettingsMenuItem(text = "상담 내역") { /* TODO */ }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 설정 섹션
-            SettingsMenuItem(text = "알림 설정") { /* TODO */ }
-            SettingsMenuItem(text = "공지사항") { /* TODO */ }
-            SettingsMenuItem(text = "앱 정보") { /* TODO */ }
         }
     }
 }
 
 @Composable
-private fun InfoButton(text: String, modifier: Modifier = Modifier) {
-    Button(
-        onClick = { /* TODO */ },
-        modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.LightGray.copy(alpha = 0.3f),
-            contentColor = Color.Black
-        )
-    ) {
-        Text(text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+        fontSize = 13.sp,
+        color = Color.Gray
+    )
 }
 
 @Composable
-private fun SettingsMenuItem(text: String, onClick: () -> Unit) {
+private fun MyInfoRow(
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit = {},
+    actionContent: (@Composable RowScope.() -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text, fontSize = 18.sp, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+            if (subtitle != null) {
+                // With subtitle
+                Text(text = title, fontSize = 16.sp, color = Color.Black)
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = subtitle, fontSize = 14.sp, color = Color.Gray)
+                    if (actionContent != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        actionContent(this)
+                    }
+                }
+            } else {
+                // Title only
+                Text(text = title, fontSize = 16.sp, color = Color.Black)
+            }
+        }
         Icon(
             imageVector = Icons.Default.KeyboardArrowRight,
-            contentDescription = "Navigate",
-            modifier = Modifier.size(24.dp),
-            tint = Color.Gray
+            contentDescription = null,
+            tint = Color.LightGray
         )
     }
 }
@@ -108,6 +180,6 @@ private fun SettingsMenuItem(text: String, onClick: () -> Unit) {
 @Composable
 fun MyInfoScreenPreview() {
     JeSafeTheme {
-        MyInfoScreen(rootNavController = rememberNavController())
+        MyInfoScreen(rememberNavController())
     }
 }
