@@ -9,8 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +112,7 @@ fun MainScreen(rootNavController: NavController) {
 
 @Composable
 fun HomeScreen(mapViewModel: MapViewModel) {
+    var showWarning by remember { mutableStateOf(true) }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
             LatLng(MapConstants.DEFAULT_LAT, MapConstants.DEFAULT_LON),
@@ -122,7 +125,7 @@ fun HomeScreen(mapViewModel: MapViewModel) {
             viewModel = mapViewModel,
             cameraPositionState = cameraPositionState
         )
-        TopContent()
+        TopContent(showWarning = showWarning, onDismissWarning = { showWarning = false })
         MapControlButtons(cameraPositionState = cameraPositionState)
         BottomInfoSheet()
     }
@@ -190,29 +193,27 @@ fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
 }
 
 @Composable
-fun TopContent() {
+fun TopContent(showWarning: Boolean, onDismissWarning: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFD32F2F)), shape = RoundedCornerShape(12.dp)) {
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(painterResource(id = R.drawable.ic_warning), contentDescription = "Warning", tint = Color.White, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("현재 서귀포시 사고 다발 경보 발령", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Icon(painterResource(id = R.drawable.ic_close), contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(40.dp).background(Color(0xFF2CA0F3), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(painterResource(id = R.drawable.ic_robot), contentDescription = "Bot", tint = Color.White, modifier = Modifier.size(24.dp))
+        if (showWarning) {
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFD32F2F)), shape = RoundedCornerShape(12.dp)) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(painterResource(id = R.drawable.ic_warning), contentDescription = "Warning", tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("현재 서귀포시 사고 다발 경보 발령", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismissWarning, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_close),
+                            contentDescription = "Close",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-                Spacer(Modifier.width(16.dp))
-                Text("근처 사고 다발 지역 알려줘", color = Color.LightGray, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                Icon(painterResource(id = R.drawable.ic_mic), contentDescription = "Mic", tint = Color.Gray, modifier = Modifier.size(24.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -240,20 +241,19 @@ fun TopContent() {
 fun BoxScope.BottomInfoSheet() {
     Box(modifier = Modifier.align(Alignment.BottomCenter)) {
         Card(
-            // 수정: 하단 여백을 줄여 탭 바 바로 위에 위치하도록 조정
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
-            Column(Modifier.padding(horizontal = 24.dp, vertical = 14.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.Top) {
                     Text("현재 위치 안전도", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.weight(1f))
                     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))){
                         Text("안전", color = Color.White, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("92", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2CA0F3))
@@ -268,7 +268,7 @@ fun BoxScope.BottomInfoSheet() {
                         Text("온도", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResource(id = R.drawable.ic_clock), contentDescription = "Update", tint = Color.Gray, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
@@ -276,15 +276,6 @@ fun BoxScope.BottomInfoSheet() {
                 }
             }
         }
-        Image(
-            painter = painterResource(id = R.drawable.ic_call),
-            contentDescription = "Call",
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 32.dp, bottom = 32.dp) 
-                .size(60.dp)
-                .clickable { /* TODO: Handle call click */ }
-        )
     }
 }
 
