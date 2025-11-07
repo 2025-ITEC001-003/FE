@@ -21,6 +21,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,8 +30,21 @@ fun LoginScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // 이메일과 비밀번호가 모두 "test"이면 자동으로 메인 페이지로 이동
+    LaunchedEffect(email, password) {
+        if (email == "test" && password == "test") {
+            snackbarHostState.showSnackbar("로그인이 되었습니다")
+            navController.navigate("main") {
+                popUpTo("login") { inclusive = true }
+            }
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { },
@@ -95,8 +110,15 @@ fun LoginScreen(navController: NavController) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Button(
                     onClick = {
-                        navController.navigate("main") { 
-                            popUpTo("login") { inclusive = true } 
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "로그인이 되었습니다",
+                                duration = SnackbarDuration.Short
+                            )
+                            delay(500)
+                            navController.navigate("main") {
+                                popUpTo("login") { inclusive = true }
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
