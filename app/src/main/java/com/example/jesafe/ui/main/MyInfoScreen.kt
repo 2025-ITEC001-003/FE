@@ -3,15 +3,39 @@ package com.example.jesafe.ui.main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,12 +75,26 @@ fun MyInfoScreen(rootNavController: NavController) {
             diseaseInfo = newDiseaseInfo
             navBackStackEntry.savedStateHandle.remove<String>("newDiseaseInfo")
         }
+
+        val newPhoneNumber = navBackStackEntry?.savedStateHandle?.get<String>("newPhoneNumber")
+        if (newPhoneNumber != null) {
+            phoneNumber = newPhoneNumber
+            navBackStackEntry.savedStateHandle.remove<String>("newPhoneNumber")
+        }
+    }
+    val maskedPhoneNumber = remember(phoneNumber) {
+        val parts = phoneNumber.split("-")
+        if (parts.size == 3 && parts[1].length == 4) {
+            "${parts[0]}-****-${parts[2]}"
+        } else {
+            phoneNumber
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("내 정보", fontWeight = FontWeight.Bold) },
+                title = { Text("내 정보", fontWeight = FontWeight.Bold, fontSize = 24.sp) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
@@ -78,30 +116,30 @@ fun MyInfoScreen(rootNavController: NavController) {
                     subtitle = name,
                     onClick = { rootNavController.navigate("change_name") }
                 )
-                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
                     title = "휴대폰 번호",
-                    subtitle = phoneNumber,
+                    subtitle = maskedPhoneNumber,
                     onClick = { rootNavController.navigate("change_phone_number") }
                 )
-                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
                     title = "이메일",
                     subtitle = email,
                     onClick = { rootNavController.navigate("change_email") }
                 )
-                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
                     title = "기저질환 관리",
                     subtitle = diseaseInfo,
                     onClick = { rootNavController.navigate("underlying_disease") }
                 )
-                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
                     title = "비밀번호 변경",
                     onClick = { rootNavController.navigate("change_password") }
                 )
-                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
                     title = "알림 설정",
                     onClick = { rootNavController.navigate("notification_settings") }
@@ -114,7 +152,7 @@ fun MyInfoScreen(rootNavController: NavController) {
             SectionHeader(text = "개인 설정 관리")
             Column(Modifier.background(Color.White)) {
                 MyInfoRow(title = "즐겨찾는 장소 관리")
-                Divider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(title = "로그아웃", onClick = {
                     rootNavController.navigate("login") {
                         popUpTo(rootNavController.graph.id) {
@@ -169,7 +207,7 @@ private fun MyInfoRow(
             }
         }
         Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = Color.LightGray
         )
