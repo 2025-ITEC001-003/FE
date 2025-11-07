@@ -33,7 +33,10 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 @Composable
 fun ChangePhoneNumberScreen(navController: NavController) {
     var phoneNumber by remember { mutableStateOf("") }
-    val isPhoneNumberValid = phoneNumber.length > 10
+    val isPhoneNumberValid = phoneNumber.length == 11
+    var isCodeSent by remember { mutableStateOf(false) }
+    var verificationCode by remember { mutableStateOf("") }
+    val isVerificationCodeValid = verificationCode.length == 6 // Assuming 6 digits for verification
 
     Scaffold(
         topBar = {
@@ -49,11 +52,26 @@ fun ChangePhoneNumberScreen(navController: NavController) {
         },
         bottomBar = {
             Button(
-                onClick = { /* TODO: Handle phone number verification */ },
+                onClick = {
+                    if (!isCodeSent) {
+                        isCodeSent = true
+                        /* TODO: Handle phone number verification request */
+                    } else {
+                        val formattedPhoneNumber = phoneNumber.let {
+                            if (it.length == 11) {
+                                "${it.substring(0, 3)}-${it.substring(3, 7)}-${it.substring(7)}"
+                            } else {
+                                it
+                            }
+                        }
+                        navController.previousBackStackEntry?.savedStateHandle?.set("newPhoneNumber", formattedPhoneNumber)
+                        navController.navigateUp()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = isPhoneNumberValid,
+                enabled = if (!isCodeSent) isPhoneNumberValid else isVerificationCodeValid,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF0A2A61), // Dark Blue for enabled
                     disabledContainerColor = Color(0xFFB0C4DE), // Light blue-gray for disabled
@@ -62,7 +80,11 @@ fun ChangePhoneNumberScreen(navController: NavController) {
                 ),
                 shape = RectangleShape
             ) {
-                Text("인증번호 전송", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (!isCodeSent) "인증번호 전송" else "확인",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     ) { innerPadding ->
@@ -73,7 +95,7 @@ fun ChangePhoneNumberScreen(navController: NavController) {
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
             Text(
-                text = "해당 번호로 인증번호가 전송됩니다.",
+                text = if (!isCodeSent) "해당 번호로 인증번호가 전송됩니다." else "인증번호를 입력해주세요.",
                 fontSize = 16.sp,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
@@ -86,14 +108,47 @@ fun ChangePhoneNumberScreen(navController: NavController) {
                 Spacer(modifier = Modifier.width(4.dp))
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = { phoneNumber = it.filter { char -> char.isDigit() } },
+                    onValueChange = {
+                        if (!isCodeSent) {
+                            val digitsOnly = it.filter { char -> char.isDigit() }
+                            if (digitsOnly.length <= 11) {
+                                phoneNumber = digitsOnly
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("010-") },
+                    readOnly = isCodeSent, // Make read-only after sending code
+                    placeholder = { Text("전화번호 ('-' 제외)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     trailingIcon = {
-                        if (phoneNumber.isNotEmpty()) {
+                        if (phoneNumber.isNotEmpty() && !isCodeSent) {
                             IconButton(onClick = { phoneNumber = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
+                            }
+                        }
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = if (isCodeSent) Color.LightGray else Color.Black,
+                        unfocusedIndicatorColor = Color.LightGray,
+                    )
+                )
+            }
+
+            if (isCodeSent) {
+                Spacer(modifier = Modifier.height(20.dp))
+                OutlinedTextField(
+                    value = verificationCode,
+                    onValueChange = { if (it.length <= 6) verificationCode = it.filter { char -> char.isDigit() } },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("인증번호 6자리") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (verificationCode.isNotEmpty()) {
+                            IconButton(onClick = { verificationCode = "" }) {
                                 Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
                             }
                         }
