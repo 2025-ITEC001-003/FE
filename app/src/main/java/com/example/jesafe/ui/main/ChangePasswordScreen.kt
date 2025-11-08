@@ -41,8 +41,17 @@ fun ChangePasswordScreen(navController: NavController) {
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    val isCurrentPasswordValid = currentPassword.length >= 6
-    val isNewPasswordValid = newPassword.length >= 6 && newPassword == confirmPassword
+
+    val currentPasswordError = if (currentPassword.isNotEmpty() && currentPassword.length < 6) {
+        "비밀번호는 6자 이상이어야 합니다"
+    } else null
+    val isCurrentPasswordValid = currentPassword.isNotEmpty() && currentPasswordError == null
+
+
+    val newPasswordError = validateNewPassword(newPassword)
+    val confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword)
+    val isNewPasswordValid = newPasswordError == null && confirmPasswordError == null &&
+            newPassword.isNotEmpty() && confirmPassword.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -53,7 +62,10 @@ fun ChangePasswordScreen(navController: NavController) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로가기")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White, titleContentColor = Color.Black)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black
+                )
             )
         },
         bottomBar = {
@@ -61,12 +73,14 @@ fun ChangePasswordScreen(navController: NavController) {
                 PasswordScreenState.VERIFY_CURRENT -> {
                     Button(
                         onClick = { screenState = PasswordScreenState.SET_NEW },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         enabled = isCurrentPasswordValid,
                         shape = RectangleShape,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF0A2A61), // Dark Blue for enabled
-                            disabledContainerColor = Color(0xFFB0C4DE), // Light blue-gray for disabled
+                            containerColor = Color(0xFF0A2A61),
+                            disabledContainerColor = Color(0xFFB0C4DE),
                             contentColor = Color.White,
                             disabledContentColor = Color.White
                         )
@@ -76,13 +90,15 @@ fun ChangePasswordScreen(navController: NavController) {
                 }
                 PasswordScreenState.SET_NEW -> {
                     Button(
-                        onClick = { navController.navigateUp() /* TODO: Handle password change */ },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        onClick = { navController.navigateUp() /* TODO: 서버/DB로 비밀번호 변경 */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         enabled = isNewPasswordValid,
                         shape = RectangleShape,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF0A2A61), // Dark Blue for enabled
-                            disabledContainerColor = Color(0xFFB0C4DE), // Light blue-gray for disabled
+                            containerColor = Color(0xFF0A2A61),
+                            disabledContainerColor = Color(0xFFB0C4DE),
                             contentColor = Color.White,
                             disabledContentColor = Color.White
                         )
@@ -109,12 +125,15 @@ fun ChangePasswordScreen(navController: NavController) {
                         color = Color.Gray
                     )
                     Spacer(modifier = Modifier.height(40.dp))
-                    PasswordTextField(
+                    PasswordTextFieldWithValidation(
                         password = currentPassword,
                         onPasswordChange = { currentPassword = it },
                         passwordVisible = currentPasswordVisible,
                         onPasswordVisibilityChange = { currentPasswordVisible = it },
-                        label = "비밀번호 (6자 이상)"
+                        label = "현재 비밀번호",
+                        validator = { currentPasswordError },
+                        showError = false,
+                        showCharCount = false
                     )
                 }
                 PasswordScreenState.SET_NEW -> {
@@ -126,20 +145,26 @@ fun ChangePasswordScreen(navController: NavController) {
                         color = Color.Gray
                     )
                     Spacer(modifier = Modifier.height(40.dp))
-                    PasswordTextField(
+                    PasswordTextFieldWithValidation(
                         password = newPassword,
                         onPasswordChange = { newPassword = it },
                         passwordVisible = newPasswordVisible,
                         onPasswordVisibilityChange = { newPasswordVisible = it },
-                        label = "새 비밀번호 (6자 이상)"
+                        label = "새 비밀번호",
+                        validator = { newPasswordError },
+                        showError = newPassword.isNotEmpty(),
+                        showCharCount = true
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    PasswordTextField(
+                    PasswordTextFieldWithValidation(
                         password = confirmPassword,
                         onPasswordChange = { confirmPassword = it },
                         passwordVisible = confirmPasswordVisible,
                         onPasswordVisibilityChange = { confirmPasswordVisible = it },
-                        label = "새 비밀번호 확인"
+                        label = "새 비밀번호 확인",
+                        validator = { confirmPasswordError },
+                        showError = confirmPassword.isNotEmpty(),
+                        showCharCount = true
                     )
                 }
             }
@@ -148,36 +173,83 @@ fun ChangePasswordScreen(navController: NavController) {
 }
 
 @Composable
-private fun PasswordTextField(
+private fun PasswordTextFieldWithValidation(
     password: String,
     onPasswordChange: (String) -> Unit,
     passwordVisible: Boolean,
     onPasswordVisibilityChange: (Boolean) -> Unit,
-    label: String
+    label: String,
+    validator: (String) -> String?,
+    showError: Boolean,
+    showCharCount: Boolean
 ) {
-    TextField(
-        value = password,
-        onValueChange = onPasswordChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
-        singleLine = true,
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            val image = if (passwordVisible) R.drawable.ic_visibility_off else R.drawable.ic_visibility
-            IconButton(onClick = { onPasswordVisibilityChange(!passwordVisible) }) {
-                Icon(painter = painterResource(id = image), contentDescription = "비밀번호 보기 토글")
-            }
-        },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.Transparent,
-            unfocusedContainerColor = Color.Transparent,
-            focusedIndicatorColor = Color.Black,
-            unfocusedIndicatorColor = Color.LightGray
+    val errorMessage = if (showError && password.isNotEmpty()) validator(password) else null
+    val isError = errorMessage != null
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        TextField(
+            value = password,
+            onValueChange = onPasswordChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(label) },
+            singleLine = true,
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                val image = if (passwordVisible) R.drawable.ic_visibility_off else R.drawable.ic_visibility
+                IconButton(onClick = { onPasswordVisibilityChange(!passwordVisible) }) {
+                    Icon(painter = painterResource(id = image), contentDescription = "비밀번호 보기 토글")
+                }
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = if (isError) Color.Red else Color.Black,
+                unfocusedIndicatorColor = if (isError) Color.Red else Color.LightGray,
+                cursorColor = if (isError) Color.Red else Color.Black
+            ),
+            isError = isError
         )
-    )
+
+        Spacer(modifier = Modifier.height(8.dp)) // 텍스트필드와 글자 수/에러 메시지 간격
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // 에러 메시지
+            Text(
+                text = errorMessage ?: "",
+                color = Color.Red,
+                fontSize = 14.sp,
+                modifier = Modifier.weight(1f)
+            )
+            // 글자 수 표시
+            if (showCharCount) {
+                Text(
+                    text = "${password.length} / 20",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
 }
 
+// 새 비밀번호 유효성 검사
+fun validateNewPassword(password: String): String? {
+    if (password.length < 6) return "비밀번호는 6자 이상이어야 합니다"
+    if (password.length > 20) return "비밀번호는 최대 20자까지 가능합니다"
+    val regex = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
+    if (!regex.containsMatchIn(password)) return "문자/숫자/특수문자를 모두 포함해야 합니다"
+    return null
+}
+
+// 비밀번호 확인 유효성
+fun validateConfirmPassword(newPassword: String, confirmPassword: String): String? {
+    if (newPassword != confirmPassword) return "비밀번호가 일치하지 않습니다"
+    return null
+}
 
 @Preview(showBackground = true)
 @Composable
