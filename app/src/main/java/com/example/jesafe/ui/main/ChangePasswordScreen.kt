@@ -50,8 +50,7 @@ fun ChangePasswordScreen(navController: NavController) {
 
     val newPasswordError = validateNewPassword(newPassword)
     val confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword)
-    val isNewPasswordValid = newPasswordError == null && confirmPasswordError == null &&
-            newPassword.isNotEmpty() && confirmPassword.isNotEmpty()
+    val isNewPasswordValid = newPasswordError == null && confirmPasswordError == null
 
     Scaffold(
         topBar = {
@@ -179,11 +178,9 @@ private fun PasswordTextFieldWithValidation(
     passwordVisible: Boolean,
     onPasswordVisibilityChange: (Boolean) -> Unit,
     label: String,
-    validator: (String) -> String?,
-    showError: Boolean,
+    errorMessage: String?,
     showCharCount: Boolean
 ) {
-    val errorMessage = if (showError && password.isNotEmpty()) validator(password) else null
     val isError = errorMessage != null
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -237,16 +234,16 @@ private fun PasswordTextFieldWithValidation(
 }
 
 // 새 비밀번호 유효성 검사
-fun validateNewPassword(password: String): String? {
+private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
+private fun validateNewPassword(password: String): String? {
     if (password.length < 6) return "비밀번호는 6자 이상이어야 합니다"
     if (password.length > 20) return "비밀번호는 최대 20자까지 가능합니다"
-    val regex = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
-    if (!regex.containsMatchIn(password)) return "문자/숫자/특수문자를 모두 포함해야 합니다"
+    if (!PASSWORD_REGEX.containsMatchIn(password)) return "문자/숫자/특수문자를 모두 포함해야 합니다"
     return null
 }
 
 // 비밀번호 확인 유효성
-fun validateConfirmPassword(newPassword: String, confirmPassword: String): String? {
+private fun validateConfirmPassword(newPassword: String, confirmPassword: String): String? {
     if (newPassword != confirmPassword) return "비밀번호가 일치하지 않습니다"
     return null
 }
