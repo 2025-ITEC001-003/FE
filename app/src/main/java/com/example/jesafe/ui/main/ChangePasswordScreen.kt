@@ -130,8 +130,7 @@ fun ChangePasswordScreen(navController: NavController) {
                         passwordVisible = currentPasswordVisible,
                         onPasswordVisibilityChange = { currentPasswordVisible = it },
                         label = "현재 비밀번호",
-                        validator = { currentPasswordError },
-                        showError = false,
+                        errorMessage = currentPasswordError,
                         showCharCount = false
                     )
                 }
@@ -150,8 +149,7 @@ fun ChangePasswordScreen(navController: NavController) {
                         passwordVisible = newPasswordVisible,
                         onPasswordVisibilityChange = { newPasswordVisible = it },
                         label = "새 비밀번호",
-                        validator = { newPasswordError },
-                        showError = newPassword.isNotEmpty(),
+                        errorMessage = if (newPassword.isNotEmpty()) newPasswordError else null,
                         showCharCount = true
                     )
                     Spacer(modifier = Modifier.height(24.dp))
@@ -161,8 +159,7 @@ fun ChangePasswordScreen(navController: NavController) {
                         passwordVisible = confirmPasswordVisible,
                         onPasswordVisibilityChange = { confirmPasswordVisible = it },
                         label = "새 비밀번호 확인",
-                        validator = { confirmPasswordError },
-                        showError = confirmPassword.isNotEmpty(),
+                        errorMessage = if (confirmPassword.isNotEmpty()) confirmPasswordError else null,
                         showCharCount = true
                     )
                 }
