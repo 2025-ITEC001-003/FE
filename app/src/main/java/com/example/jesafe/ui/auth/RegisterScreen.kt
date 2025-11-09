@@ -24,7 +24,7 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 
 private const val MAX_NAME_LENGTH = 10
 private const val MIN_PASSWORD_LENGTH = 6
-private const val MAX_PASSWORD_LENGTH = 22
+private const val MAX_PASSWORD_LENGTH = 20
 private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$")
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -173,7 +173,7 @@ fun RegisterScreen(navController: NavController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("계정이 있다면?", color = Color.Gray, fontSize = 14.sp)
                     TextButton(onClick = { navController.navigate("login") }) {
-                        Text("회원가입", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("로그인", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
                 Spacer(modifier = Modifier.height(40.dp))

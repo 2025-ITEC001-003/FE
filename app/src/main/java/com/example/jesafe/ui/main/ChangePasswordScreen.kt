@@ -23,6 +23,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
 
+private const val MIN_PASSWORD_LENGTH = 6
+private const val MAX_PASSWORD_LENGTH = 20
+private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
 enum class PasswordScreenState {
     VERIFY_CURRENT,
     SET_NEW
@@ -42,8 +45,8 @@ fun ChangePasswordScreen(navController: NavController) {
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
 
-    val currentPasswordError = if (currentPassword.isNotEmpty() && currentPassword.length < 6) {
-        "비밀번호는 6자 이상이어야 합니다"
+    val currentPasswordError = if (currentPassword.isNotEmpty() && currentPassword.length < MIN_PASSWORD_LENGTH) {
+        "비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다"
     } else null
     val isCurrentPasswordValid = currentPassword.isNotEmpty() && currentPasswordError == null
 
@@ -221,7 +224,7 @@ private fun PasswordTextFieldWithValidation(
             // 글자 수 표시
             if (showCharCount) {
                 Text(
-                    text = "${password.length} / 20",
+                    text = "${password.length} / ${MAX_PASSWORD_LENGTH}",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
@@ -231,10 +234,9 @@ private fun PasswordTextFieldWithValidation(
 }
 
 // 새 비밀번호 유효성 검사
-private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
 private fun validateNewPassword(password: String): String? {
-    if (password.length < 6) return "비밀번호는 6자 이상이어야 합니다"
-    if (password.length > 20) return "비밀번호는 최대 20자까지 가능합니다"
+    if (password.length < MIN_PASSWORD_LENGTH) return "비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다"
+    if (password.length > MAX_PASSWORD_LENGTH) return "비밀번호는 최대 ${MAX_PASSWORD_LENGTH}자까지 가능합니다"
     if (!PASSWORD_REGEX.containsMatchIn(password)) return "문자/숫자/특수문자를 모두 포함해야 합니다"
     return null
 }
