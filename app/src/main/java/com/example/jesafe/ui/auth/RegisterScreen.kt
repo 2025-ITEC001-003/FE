@@ -173,7 +173,7 @@ fun RegisterScreen(navController: NavController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("계정이 있다면?", color = Color.Gray, fontSize = 14.sp)
                     TextButton(onClick = { navController.navigate("login") }) {
-                        Text("회원가입", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("로그인", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
                 Spacer(modifier = Modifier.height(40.dp))
