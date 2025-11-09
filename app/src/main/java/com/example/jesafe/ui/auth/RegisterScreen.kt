@@ -24,7 +24,7 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 
 private const val MAX_NAME_LENGTH = 10
 private const val MIN_PASSWORD_LENGTH = 6
-private const val MAX_PASSWORD_LENGTH = 22
+private const val MAX_PASSWORD_LENGTH = 20
 private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$")
 
 @OptIn(ExperimentalMaterial3Api::class)
