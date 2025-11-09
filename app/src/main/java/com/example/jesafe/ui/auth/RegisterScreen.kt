@@ -22,6 +22,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
 
+private const val MAX_NAME_LENGTH = 10
+private const val MIN_PASSWORD_LENGTH = 6
+private const val MAX_PASSWORD_LENGTH = 22
+private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(navController: NavController) {
@@ -31,7 +36,8 @@ fun RegisterScreen(navController: NavController) {
     var passwordVisible by remember { mutableStateOf(false) }
 
     // 유효성 검사
-    val nameError = if (name.isNotEmpty() && name.length > 10) "이름은 최대 10자까지 가능합니다" else null
+
+    val nameError = if (name.isNotEmpty() && name.length > MAX_NAME_LENGTH) "이름은 최대 ${MAX_NAME_LENGTH}자까지 가능합니다" else null
     val emailError = if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) "올바른 이메일 형식이 아닙니다" else null
     val passwordError = if (password.isNotEmpty()) validatePassword(password) else null
 
@@ -82,8 +88,9 @@ fun RegisterScreen(navController: NavController) {
                 shape = RoundedCornerShape(10.dp),
                 isError = nameError != null,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = if (nameError != null) Color.Red else Color(0xFFEDF1F3),
-                    focusedBorderColor = if (nameError != null) Color.Red else Color(0xFF2CA0F3)
+                    unfocusedBorderColor = Color(0xFFEDF1F3),
+                    focusedBorderColor = Color(0xFF2CA0F3),
+                    errorBorderColor = Color.Red
                 ),
                 singleLine = true
             )
@@ -176,12 +183,13 @@ fun RegisterScreen(navController: NavController) {
 }
 
 // 비밀번호 유효성 검사
-private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
 private fun validatePassword(password: String): String? {
-    if (password.length < 6) return "비밀번호는 6자 이상이어야 합니다"
-    if (password.length > 20) return "비밀번호는 최대 20자까지 가능합니다"
-    if (!PASSWORD_REGEX.containsMatchIn(password)) return "문자/숫자/특수문자를 모두 포함해야 합니다"
-    return null
+    return when {
+        password.length < MIN_PASSWORD_LENGTH -> "비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다"
+        password.length > MAX_PASSWORD_LENGTH -> "비밀번호는 최대 ${MAX_PASSWORD_LENGTH}자까지 가능합니다"
+        !PASSWORD_REGEX.containsMatchIn(password) -> "문자/숫자/특수문자를 모두 포함해야 합니다"
+        else -> null
+    }
 }
 
 @Preview(showBackground = true)
