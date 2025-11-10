@@ -93,6 +93,9 @@ dependencies {
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
+
+    // Kakao
+    implementation(libs.kakao.user)
 }
 
 

@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.example.jesafe.data.local.AppDatabase
 import com.example.jesafe.utils.CsvImporter
+import com.kakao.sdk.common.KakaoSdk
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,9 @@ class JeSafeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Kakao SDK 초기화
+        KakaoSdk.init(this, "bb30f164f208df568bc0c2a1d39d20b0")
 
         applicationScope.launch {
             CsvImporter.importIfEmpty(this@JeSafeApp, database)
