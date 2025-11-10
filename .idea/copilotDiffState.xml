@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/app/src/main/res/xml/network_security_config.xml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/res/xml/network_security_config.xml" />
+              <option name="originalContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;network-security-config&gt;&#10;    &lt;domain-config cleartextTrafficPermitted=&quot;true&quot;&gt;&#10;        &lt;domain includeSubdomains=&quot;true&quot;&gt;3.37.68.172&lt;/domain&gt;&#10;    &lt;/domain-config&gt;&#10;&lt;/network-security-config&gt;&#10;" />
+              <option name="updatedContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;network-security-config&gt;&#10;    &lt;domain-config cleartextTrafficPermitted=&quot;true&quot;&gt;&#10;        &lt;domain includeSubdomains=&quot;true&quot;&gt;3.37.68.172&lt;/domain&gt;&#10;    &lt;/domain-config&gt;&#10;&lt;/network-security-config&gt;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
