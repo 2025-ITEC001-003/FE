@@ -8,6 +8,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,6 +45,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -60,9 +63,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
@@ -73,6 +78,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
+import com.example.jesafe.ui.theme.OffWhite
+import com.example.jesafe.ui.theme.LightGrey
+import com.example.jesafe.ui.theme.LightSkyBlue
+import com.example.jesafe.ui.theme.NavyBlue
+import com.example.jesafe.ui.theme.SoftBlue
+import com.example.jesafe.ui.theme.DeepBlue
 import kotlinx.coroutines.launch
 
 /**
@@ -113,15 +124,18 @@ fun AiChatScreen(
         }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    
     Scaffold(
-        containerColor = Color.White,
+        containerColor = OffWhite,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         "AI 안전 도우미",
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.Black
+                        color = NavyBlue
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -140,9 +154,11 @@ fun AiChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(OffWhite)
                 .padding(innerPadding)
         ) {
+            SubtleBackgroundPattern()
+            
             if (messages.isEmpty()) {
                 EmptyStateContent(
                     onSuggestionClick = { suggestion ->
@@ -161,11 +177,44 @@ fun AiChatScreen(
                 ) {
                     item { Spacer(modifier = Modifier.height(8.dp)) }
                     items(messages.reversed(), key = { it.id }) { message ->
-                        MessageBubble(message)
+                        MessageBubble(
+                            message = message,
+                            snackbarHostState = snackbarHostState
+                        )
                     }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * 미세한 점(Dot) 패턴 배경
+ *
+ * Canvas를 사용하여 매우 옅은 점 패턴을 그립니다.
+ * 배경을 밋밋하지 않게 만들어주는 디테일 요소입니다.
+ */
+@Composable
+fun SubtleBackgroundPattern() {
+    val density = LocalDensity.current
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val dotRadius = with(density) { 1.dp.toPx() }
+        val spacing = with(density) { 20.dp.toPx() }
+        val dotColor = LightGrey.copy(alpha = 0.1f)
+
+        var y = 0f
+        while (y < size.height) {
+            var x = 0f
+            while (x < size.width) {
+                drawCircle(
+                    color = dotColor,
+                    radius = dotRadius,
+                    center = Offset(x, y)
+                )
+                x += spacing
+            }
+            y += spacing
         }
     }
 }
@@ -292,20 +341,25 @@ fun SuggestionCard(text: String, onClick: () -> Unit) {
  *
  * 사용자 또는 AI의 메시지를 말풍선 형태로 표시합니다.
  * 길게 누르면 복사, 공유, 삭제 옵션이 있는 컨텍스트 메뉴가 나타납니다.
- * 선택 시 시각적 피드백(스케일 애니메이션, 색상 변경)을 제공합니다.
+ * 선택 시 시각적 피드백(스케일 애니메이션, 색상 변경, 그림자 효과)을 제공합니다.
  *
  * @param message 표시할 메시지 객체
+ * @param snackbarHostState 스낵바 표시를 위한 HostState
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageBubble(message: Message) {
+fun MessageBubble(
+    message: Message,
+    snackbarHostState: SnackbarHostState
+) {
     val context = LocalContext.current
     val view = LocalView.current
+    val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
     var isSelected by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 0.95f else 1f,
+        targetValue = if (isSelected) 0.98f else 1f,
         label = "message_scale"
     )
 
@@ -314,7 +368,9 @@ fun MessageBubble(message: Message) {
             onCopy = { text ->
                 copyToClipboard(context, text)
                 performHapticFeedback(view)
-                showToast(context, "📋 메시지가 복사되었습니다")
+                scope.launch {
+                    snackbarHostState.showSnackbar("📋 클립보드에 복사되었어요")
+                }
             },
             onShare = { text ->
                 shareText(context, text)
@@ -322,7 +378,9 @@ fun MessageBubble(message: Message) {
             },
             onDelete = {
                 performHapticFeedback(view)
-                showToast(context, "🗑️ 메시지가 삭제되었습니다")
+                scope.launch {
+                    snackbarHostState.showSnackbar("🗑️ 메시지가 삭제되었습니다")
+                }
             }
         )
     }
@@ -344,6 +402,14 @@ fun MessageBubble(message: Message) {
                     modifier = Modifier
                         .widthIn(max = 280.dp)
                         .scale(scale)
+                        .shadow(
+                            elevation = if (isSelected) 6.dp else 2.dp,
+                            shape = RoundedCornerShape(
+                                topStart = 16.dp, topEnd = 16.dp,
+                                bottomStart = if (message.isUser) 16.dp else 4.dp,
+                                bottomEnd = if (message.isUser) 4.dp else 16.dp
+                            )
+                        )
                         .combinedClickable(
                             onClick = { },
                             onLongClick = {
@@ -354,26 +420,27 @@ fun MessageBubble(message: Message) {
                         ),
                     shape = RoundedCornerShape(
                         topStart = 16.dp, topEnd = 16.dp,
-                        bottomStart = if (message.isUser) 16.dp else 0.dp,
-                        bottomEnd = if (message.isUser) 0.dp else 16.dp
+                        bottomStart = if (message.isUser) 16.dp else 4.dp,
+                        bottomEnd = if (message.isUser) 4.dp else 16.dp
                     ),
                     colors = CardDefaults.cardColors(
                         containerColor = when {
-                            isSelected && message.isUser -> Color(0xFF1E88E5)
-                            isSelected && !message.isUser -> Color(0xFFBDBDBD)
-                            message.isUser -> Color(0xFF2CA0F3)
-                            else -> Color.LightGray.copy(alpha = 0.3f)
+                            isSelected && message.isUser -> DeepBlue
+                            isSelected && !message.isUser -> Color(0xFFE0E0E0)
+                            message.isUser -> SoftBlue
+                            else -> Color.White
                         }
                     ),
                     elevation = CardDefaults.cardElevation(
-                        defaultElevation = if (isSelected) 8.dp else 1.dp
+                        defaultElevation = 0.dp
                     )
                 ) {
                     Text(
                         text = message.text,
-                        color = if (message.isUser) Color.White else Color.Black,
-                        modifier = Modifier.padding(12.dp),
-                        fontSize = 15.sp
+                        color = if (message.isUser) Color.White else NavyBlue,
+                        modifier = Modifier.padding(14.dp),
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp
                     )
                 }
 
