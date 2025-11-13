@@ -39,8 +39,6 @@ fun RegisterScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // 유효성 검사
-
     val nameError = if (name.isNotEmpty() && name.length > MAX_NAME_LENGTH) stringResource(R.string.error_name_max_length, MAX_NAME_LENGTH) else null
     val emailError = if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) stringResource(R.string.error_email_invalid) else null
     val passwordError = if (password.isNotEmpty()) validatePassword(password) else null
@@ -81,7 +79,6 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // 이름
             Text("이름", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedTextField(
@@ -105,7 +102,6 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 이메일
             Text("Email", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedTextField(
@@ -129,7 +125,6 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 비밀번호
             Text("비밀번호", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(4.dp))
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -185,8 +180,6 @@ fun RegisterScreen(navController: NavController) {
         }
     }
 }
-
-// 비밀번호 유효성 검사
 @Composable
 private fun validatePassword(password: String): String? {
     return when {

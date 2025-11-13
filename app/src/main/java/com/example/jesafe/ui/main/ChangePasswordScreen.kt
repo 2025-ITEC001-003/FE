@@ -213,20 +213,18 @@ private fun PasswordTextFieldWithValidation(
             isError = isError
         )
 
-        Spacer(modifier = Modifier.height(8.dp)) // 텍스트필드와 글자 수/에러 메시지 간격
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // 에러 메시지
             Text(
                 text = errorMessage ?: "",
                 color = Color.Red,
                 fontSize = 14.sp,
                 modifier = Modifier.weight(1f)
             )
-            // 글자 수 표시
             if (showCharCount) {
                 Text(
                     text = "${password.length} / ${MAX_PASSWORD_LENGTH}",
@@ -238,7 +236,7 @@ private fun PasswordTextFieldWithValidation(
     }
 }
 
-// 새 비밀번호 유효성 검사
+
 private fun validateNewPassword(password: String, context: android.content.Context): String? {
     return when {
         password.length < MIN_PASSWORD_LENGTH -> context.getString(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
@@ -248,7 +246,6 @@ private fun validateNewPassword(password: String, context: android.content.Conte
     }
 }
 
-// 비밀번호 확인 유효성
 private fun validateConfirmPassword(newPassword: String, confirmPassword: String, context: android.content.Context): String? {
     if (newPassword != confirmPassword) return context.getString(R.string.error_password_not_match)
     return null
