@@ -39,7 +39,6 @@ enum class PasswordScreenState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangePasswordScreen(navController: NavController) {
-    val context = LocalContext.current
     var screenState by remember { mutableStateOf(PasswordScreenState.VERIFY_CURRENT) }
 
     var currentPassword by remember { mutableStateOf("") }
@@ -50,14 +49,13 @@ fun ChangePasswordScreen(navController: NavController) {
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-
     val currentPasswordError = if (currentPassword.isNotEmpty() && currentPassword.length < MIN_PASSWORD_LENGTH) {
-        context.getString(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
+        stringResource(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
     } else null
     val isCurrentPasswordValid = currentPassword.isNotEmpty() && currentPasswordError == null
 
-    val newPasswordError = validateNewPassword(newPassword, context)
-    val confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword, context)
+    val newPasswordError = validateNewPassword(newPassword)
+    val confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword)
     val isNewPasswordValid = newPasswordError == null && confirmPasswordError == null
 
     Scaffold(
@@ -97,7 +95,7 @@ fun ChangePasswordScreen(navController: NavController) {
                 }
                 PasswordScreenState.SET_NEW -> {
                     Button(
-                        onClick = { navController.navigateUp() /* TODO: 서버/DB로 비밀번호 변경 */ },
+                        onClick = { navController.navigateUp() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -206,7 +204,7 @@ private fun PasswordTextFieldWithValidation(
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = if (isError) Color.Red else Color.Black,
+                focusedIndicatorColor = if (isError) Color.Red else SoftBlue,
                 unfocusedIndicatorColor = if (isError) Color.Red else Color.LightGray,
                 cursorColor = if (isError) Color.Red else Color.Black
             ),
@@ -227,7 +225,7 @@ private fun PasswordTextFieldWithValidation(
             )
             if (showCharCount) {
                 Text(
-                    text = "${password.length} / ${MAX_PASSWORD_LENGTH}",
+                    text = "${password.length} / $MAX_PASSWORD_LENGTH",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
@@ -236,18 +234,19 @@ private fun PasswordTextFieldWithValidation(
     }
 }
 
-
-private fun validateNewPassword(password: String, context: android.content.Context): String? {
+@Composable
+private fun validateNewPassword(password: String): String? {
     return when {
-        password.length < MIN_PASSWORD_LENGTH -> context.getString(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
-        password.length > MAX_PASSWORD_LENGTH -> context.getString(R.string.error_password_too_long, MAX_PASSWORD_LENGTH)
-        !PASSWORD_REGEX.containsMatchIn(password) -> context.getString(R.string.error_password_invalid)
+        password.length < MIN_PASSWORD_LENGTH -> stringResource(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
+        password.length > MAX_PASSWORD_LENGTH -> stringResource(R.string.error_password_too_long, MAX_PASSWORD_LENGTH)
+        !PASSWORD_REGEX.containsMatchIn(password) -> stringResource(R.string.error_password_invalid)
         else -> null
     }
 }
 
-private fun validateConfirmPassword(newPassword: String, confirmPassword: String, context: android.content.Context): String? {
-    if (newPassword != confirmPassword) return context.getString(R.string.error_password_not_match)
+@Composable
+private fun validateConfirmPassword(newPassword: String, confirmPassword: String): String? {
+    if (newPassword != confirmPassword) return stringResource(R.string.error_password_not_match)
     return null
 }
 
