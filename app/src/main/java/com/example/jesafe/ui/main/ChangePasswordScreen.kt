@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -22,10 +23,13 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+
 
 private const val MIN_PASSWORD_LENGTH = 6
 private const val MAX_PASSWORD_LENGTH = 20
-private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#\$%^&*]).+$")
+private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$")
 enum class PasswordScreenState {
     VERIFY_CURRENT,
     SET_NEW
@@ -34,6 +38,7 @@ enum class PasswordScreenState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangePasswordScreen(navController: NavController) {
+    val context = LocalContext.current
     var screenState by remember { mutableStateOf(PasswordScreenState.VERIFY_CURRENT) }
 
     var currentPassword by remember { mutableStateOf("") }
@@ -46,13 +51,12 @@ fun ChangePasswordScreen(navController: NavController) {
 
 
     val currentPasswordError = if (currentPassword.isNotEmpty() && currentPassword.length < MIN_PASSWORD_LENGTH) {
-        "비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다"
+        context.getString(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
     } else null
     val isCurrentPasswordValid = currentPassword.isNotEmpty() && currentPasswordError == null
 
-
-    val newPasswordError = validateNewPassword(newPassword)
-    val confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword)
+    val newPasswordError = validateNewPassword(newPassword, context)
+    val confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword, context)
     val isNewPasswordValid = newPasswordError == null && confirmPasswordError == null
 
     Scaffold(
@@ -81,8 +85,8 @@ fun ChangePasswordScreen(navController: NavController) {
                         enabled = isCurrentPasswordValid,
                         shape = RectangleShape,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF0A2A61),
-                            disabledContainerColor = Color(0xFFB0C4DE),
+                            containerColor = colorResource(id = R.color.blue),
+                            disabledContainerColor = colorResource(id = R.color.lightblue),
                             contentColor = Color.White,
                             disabledContentColor = Color.White
                         )
@@ -99,8 +103,8 @@ fun ChangePasswordScreen(navController: NavController) {
                         enabled = isNewPasswordValid,
                         shape = RectangleShape,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF0A2A61),
-                            disabledContainerColor = Color(0xFFB0C4DE),
+                            containerColor = colorResource(id = R.color.blue),
+                            disabledContainerColor = colorResource(id = R.color.lightblue),
                             contentColor = Color.White,
                             disabledContentColor = Color.White
                         )
@@ -234,16 +238,18 @@ private fun PasswordTextFieldWithValidation(
 }
 
 // 새 비밀번호 유효성 검사
-private fun validateNewPassword(password: String): String? {
-    if (password.length < MIN_PASSWORD_LENGTH) return "비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다"
-    if (password.length > MAX_PASSWORD_LENGTH) return "비밀번호는 최대 ${MAX_PASSWORD_LENGTH}자까지 가능합니다"
-    if (!PASSWORD_REGEX.containsMatchIn(password)) return "문자/숫자/특수문자를 모두 포함해야 합니다"
-    return null
+private fun validateNewPassword(password: String, context: android.content.Context): String? {
+    return when {
+        password.length < MIN_PASSWORD_LENGTH -> context.getString(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
+        password.length > MAX_PASSWORD_LENGTH -> context.getString(R.string.error_password_too_long, MAX_PASSWORD_LENGTH)
+        !PASSWORD_REGEX.containsMatchIn(password) -> context.getString(R.string.error_password_invalid)
+        else -> null
+    }
 }
 
 // 비밀번호 확인 유효성
-private fun validateConfirmPassword(newPassword: String, confirmPassword: String): String? {
-    if (newPassword != confirmPassword) return "비밀번호가 일치하지 않습니다"
+private fun validateConfirmPassword(newPassword: String, confirmPassword: String, context: android.content.Context): String? {
+    if (newPassword != confirmPassword) return context.getString(R.string.error_password_not_match)
     return null
 }
 
