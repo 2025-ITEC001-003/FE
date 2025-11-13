@@ -19,6 +19,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "SERVER_URL", "\"http://3.37.68.172:8000/\"")
+//        buildConfigField("String", "SERVER_URL", "\"http://10.0.2.2:8000/\"")
     }
 
     buildTypes {
@@ -29,6 +31,7 @@ android {
                 "proguard-rules.pro"
             )
         }
+
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
