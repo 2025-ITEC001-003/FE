@@ -113,8 +113,9 @@ fun RegisterScreen(navController: NavController) {
                 shape = RoundedCornerShape(10.dp),
                 isError = emailError != null,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = if (emailError != null) Color.Red else LightSkyBlue,
-                    focusedBorderColor = if (emailError != null) Color.Red else SoftBlue
+                    unfocusedBorderColor = LightSkyBlue,
+                    focusedBorderColor = SoftBlue,
+                    errorBorderColor = Color.Red
                 ),
                 singleLine = true
             )
@@ -143,8 +144,9 @@ fun RegisterScreen(navController: NavController) {
                     shape = RoundedCornerShape(10.dp),
                     isError = passwordError != null,
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = if (passwordError != null) Color.Red else LightSkyBlue,
-                        focusedBorderColor = if (passwordError != null) Color.Red else SoftBlue
+                        unfocusedBorderColor = LightSkyBlue,
+                        focusedBorderColor = SoftBlue,
+                        errorBorderColor = Color.Red
                     ),
                     singleLine = true
                 )
