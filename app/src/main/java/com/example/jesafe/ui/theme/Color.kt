@@ -20,3 +20,7 @@ val CharcoalGrey = Color(0xFF34495E)
 val LightGrey = Color(0xFF95A5A6)
 val SoftBlue = Color(0xFF2CA0F3)
 val DeepBlue = Color(0xFF1E88E5)
+
+//비밀번호
+val Navy = Color(0xFF0A2A61)
+val LightBlue = Color(0xFFB0C4DE)
