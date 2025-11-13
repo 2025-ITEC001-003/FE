@@ -25,6 +25,7 @@ import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import com.example.jesafe.ui.theme.*
 
 
 private const val MIN_PASSWORD_LENGTH = 6
@@ -85,8 +86,8 @@ fun ChangePasswordScreen(navController: NavController) {
                         enabled = isCurrentPasswordValid,
                         shape = RectangleShape,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(id = R.color.blue),
-                            disabledContainerColor = colorResource(id = R.color.lightblue),
+                            containerColor = Navy,
+                            disabledContainerColor = LightBlue,
                             contentColor = Color.White,
                             disabledContentColor = Color.White
                         )
@@ -103,8 +104,8 @@ fun ChangePasswordScreen(navController: NavController) {
                         enabled = isNewPasswordValid,
                         shape = RectangleShape,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(id = R.color.blue),
-                            disabledContainerColor = colorResource(id = R.color.lightblue),
+                            containerColor = Navy,
+                            disabledContainerColor = LightBlue,
                             contentColor = Color.White,
                             disabledContentColor = Color.White
                         )

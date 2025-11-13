@@ -21,6 +21,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import com.example.jesafe.ui.theme.*
 
 private const val MAX_NAME_LENGTH = 10
 private const val MIN_PASSWORD_LENGTH = 6
@@ -37,8 +41,8 @@ fun RegisterScreen(navController: NavController) {
 
     // 유효성 검사
 
-    val nameError = if (name.isNotEmpty() && name.length > MAX_NAME_LENGTH) "이름은 최대 ${MAX_NAME_LENGTH}자까지 가능합니다" else null
-    val emailError = if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) "올바른 이메일 형식이 아닙니다" else null
+    val nameError = if (name.isNotEmpty() && name.length > MAX_NAME_LENGTH) stringResource(R.string.error_name_max_length, MAX_NAME_LENGTH) else null
+    val emailError = if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) stringResource(R.string.error_email_invalid) else null
     val passwordError = if (password.isNotEmpty()) validatePassword(password) else null
 
     val isButtonEnabled =
@@ -88,8 +92,8 @@ fun RegisterScreen(navController: NavController) {
                 shape = RoundedCornerShape(10.dp),
                 isError = nameError != null,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEDF1F3),
-                    focusedBorderColor = Color(0xFF2CA0F3),
+                    unfocusedBorderColor = LightSkyBlue,
+                    focusedBorderColor = SoftBlue,
                     errorBorderColor = Color.Red
                 ),
                 singleLine = true
@@ -113,8 +117,8 @@ fun RegisterScreen(navController: NavController) {
                 shape = RoundedCornerShape(10.dp),
                 isError = emailError != null,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = if (emailError != null) Color.Red else Color(0xFFEDF1F3),
-                    focusedBorderColor = if (emailError != null) Color.Red else Color(0xFF2CA0F3)
+                    unfocusedBorderColor = if (emailError != null) Color.Red else LightSkyBlue,
+                    focusedBorderColor = if (emailError != null) Color.Red else SoftBlue
                 ),
                 singleLine = true
             )
@@ -144,8 +148,8 @@ fun RegisterScreen(navController: NavController) {
                     shape = RoundedCornerShape(10.dp),
                     isError = passwordError != null,
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = if (passwordError != null) Color.Red else Color(0xFFEDF1F3),
-                        focusedBorderColor = if (passwordError != null) Color.Red else Color(0xFF2CA0F3)
+                        unfocusedBorderColor = if (passwordError != null) Color.Red else LightSkyBlue,
+                        focusedBorderColor = if (passwordError != null) Color.Red else SoftBlue
                     ),
                     singleLine = true
                 )
@@ -162,7 +166,7 @@ fun RegisterScreen(navController: NavController) {
                     onClick = { navController.navigate("additional_info/$name") },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3)),
+                    colors = ButtonDefaults.buttonColors(containerColor = SoftBlue),
                     enabled = isButtonEnabled
                 ) {
                     Text("다음으로", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -173,7 +177,7 @@ fun RegisterScreen(navController: NavController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("계정이 있다면?", color = Color.Gray, fontSize = 14.sp)
                     TextButton(onClick = { navController.navigate("login") }) {
-                        Text("로그인", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("로그인", color = SoftBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
                 Spacer(modifier = Modifier.height(40.dp))
@@ -183,11 +187,12 @@ fun RegisterScreen(navController: NavController) {
 }
 
 // 비밀번호 유효성 검사
+@Composable
 private fun validatePassword(password: String): String? {
     return when {
-        password.length < MIN_PASSWORD_LENGTH -> "비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다"
-        password.length > MAX_PASSWORD_LENGTH -> "비밀번호는 최대 ${MAX_PASSWORD_LENGTH}자까지 가능합니다"
-        !PASSWORD_REGEX.containsMatchIn(password) -> "문자/숫자/특수문자를 모두 포함해야 합니다"
+        password.length < MIN_PASSWORD_LENGTH -> stringResource(R.string.error_password_too_short, MIN_PASSWORD_LENGTH)
+        password.length > MAX_PASSWORD_LENGTH -> stringResource(R.string.error_password_too_long, MAX_PASSWORD_LENGTH)
+        !PASSWORD_REGEX.containsMatchIn(password) -> stringResource(R.string.error_password_invalid)
         else -> null
     }
 }
