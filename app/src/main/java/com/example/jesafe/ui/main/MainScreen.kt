@@ -57,6 +57,7 @@ import com.example.jesafe.data.local.AccidentDao
 import com.example.jesafe.data.local.AccidentEntity
 import com.example.jesafe.data.local.GridCell
 import com.example.jesafe.data.repository.AccidentRepository
+import com.example.jesafe.ui.auth.LoginViewModel
 import com.example.jesafe.ui.map.MapConstants
 import com.example.jesafe.ui.map.MapScreen
 import com.example.jesafe.ui.map.MapViewModel
@@ -79,7 +80,7 @@ sealed class BottomNavItem(val route: String, val resourceId: Int, val title: St
 }
 
 @Composable
-fun MainScreen(rootNavController: NavController) {
+fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel) {
     val navController = rememberNavController()
     val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.AiChat, BottomNavItem.MyInfo)
 
@@ -136,7 +137,7 @@ fun MainScreen(rootNavController: NavController) {
                 AiChatScreen()
             }
             composable(BottomNavItem.MyInfo.route) {
-                MyInfoScreen(rootNavController = rootNavController)
+                MyInfoScreen(rootNavController = rootNavController, loginViewModel = loginViewModel)
             }
         }
     }
@@ -193,6 +194,8 @@ fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
                             1000
                         )
                     }
+                } catch (e: SecurityException) {
+                    e.printStackTrace()
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

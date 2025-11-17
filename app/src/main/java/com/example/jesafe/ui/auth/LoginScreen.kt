@@ -1,12 +1,38 @@
 package com.example.jesafe.ui.auth
 
 import android.util.Log
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,20 +45,30 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.JeSafeTheme
-import com.kakao.sdk.auth.model.OAuthToken
+import com.kakao.sdk.auth.AuthCodeClient
 import com.kakao.sdk.common.model.ClientError
 import com.kakao.sdk.common.model.ClientErrorCause
-import com.kakao.sdk.user.UserApiClient
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 사용자 로그인 및 회원가입 화면을 표시합니다.
+ *
+ * 이메일/비밀번호 입력, 카카오 소셜 로그인, 회원가입 화면으로의 이동 기능을 제공합니다.
+ * ViewModel의 [LoginState]를 관찰하여 로그인 결과에 따라 메인 화면 또는 추가 정보 입력 화면으로 자동 이동합니다.
+ *
+ * @param navController 앱의 화면 전환을 관리하는 NavController.
+ * @param viewModel 로그인 로직 및 상태를 관리하는 [LoginViewModel].
+ */
 @Composable
-fun LoginScreen(navController: NavController) {
+fun LoginScreen(
+    navController: NavController,
+    viewModel: LoginViewModel = hiltViewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -40,26 +76,31 @@ fun LoginScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // 이메일과 비밀번호가 모두 "test"이면 자동으로 메인 페이지로 이동
-    LaunchedEffect(email, password) {
-        if (email == "test" && password == "test") {
-            snackbarHostState.showSnackbar("로그인이 되었습니다")
-            navController.navigate("main") {
-                popUpTo("login") { inclusive = true }
+    val loginState by viewModel.loginState.collectAsState()
+
+    LaunchedEffect(loginState) {
+        when (val state = loginState) {
+            is LoginState.ExistingUser -> {
+                snackbarHostState.showSnackbar("로그인 성공!")
+                navController.navigate("main") {
+                    popUpTo("login") { inclusive = true }
+                }
             }
+            is LoginState.NewUser -> {
+                val nickname = state.nickname ?: "사용자"
+                navController.navigate("additional_info/$nickname") {
+                    popUpTo("login") { inclusive = true }
+                }
+            }
+            is LoginState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+            }
+            else -> Unit
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
-        }
     ) {
         Column(
             modifier = Modifier
@@ -67,7 +108,7 @@ fun LoginScreen(navController: NavController) {
                 .padding(it)
                 .padding(horizontal = 24.dp),
         ) {
-            // --- Top Part ---
+
             Text("로그인", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -81,10 +122,6 @@ fun LoginScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEDF1F3),
-                    focusedBorderColor = Color(0xFF2CA0F3)
-                )
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -104,98 +141,83 @@ fun LoginScreen(navController: NavController) {
                     }
                 },
                 shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEDF1F3),
-                    focusedBorderColor = Color(0xFF2CA0F3)
-                )
             )
 
-            // This Spacer will push the content below it to the bottom
             Spacer(modifier = Modifier.weight(1f))
 
-            // --- Bottom Part ---
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "로그인이 되었습니다",
-                                duration = SnackbarDuration.Short
-                            )
-                            delay(500)
-                            navController.navigate("main") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3))
-                ) {
-                    Text("로그인", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val callback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
-                                if (error != null) {
-                                    Log.e("KAKAO_LOGIN", "카카오계정으로 로그인 실패", error)
-                                } else if (token != null) {
-                                    Log.i("KAKAO_LOGIN", "카카오계정으로 로그인 성공 ${token.accessToken}")
-                                    navController.navigate("main") {
-                                        popUpTo("login") { inclusive = true }
-                                    }
-                                }
-                            }
-
-                            // 카카오톡이 설치되어 있으면 카카오톡으로 로그인, 아니면 카카오계정으로 로그인
-                            if (UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
-                                UserApiClient.instance.loginWithKakaoTalk(context) { token, error ->
-                                    if (error != null) {
-                                        Log.e("KAKAO_LOGIN", "카카오톡으로 로그인 실패", error)
-
-                                        // 사용자가 카카오톡 설치 후 디바이스 권한 요청 화면에서 로그인을 취소한 경우,
-                                        // 의도적인 로그인 취소로 보고 카카오계정으로 로그인 시도 없이 로그인 취소로 처리 (예: 뒤로 가기)
-                                        if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
-                                            return@loginWithKakaoTalk
-                                        }
-
-                                        // 카카오톡에 연결된 카카오계정이 없는 경우, 카카오계정으로 로그인 시도
-                                        UserApiClient.instance.loginWithKakaoAccount(context, callback = callback)
-                                    } else if (token != null) {
-                                        Log.i("KAKAO_LOGIN", "카카오톡으로 로그인 성공 ${token.accessToken}")
-                                        navController.navigate("main") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                    }
-                                }
-                            } else {
-                                UserApiClient.instance.loginWithKakaoAccount(context, callback = callback)
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFACC15), contentColor = Color.DarkGray)
-                ) {
-                    Icon(painter = painterResource(id = R.drawable.ic_kakao), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFF391E1F))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("카카오톡으로 간편 로그인", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("계정이 없다면?", color = Color.Gray, fontSize = 14.sp)
-                    TextButton(onClick = { navController.navigate("register") }) {
-                        Text("회원가입", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Button(
+                onClick = {
+                    navController.navigate("main") {
+                        popUpTo("login") { inclusive = true }
                     }
-                }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2CA0F3))
+            ) {
+                Text("로그인", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
 
-                Spacer(modifier = Modifier.height(40.dp)) // 간격 조정
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = {
+                    val authCodeCallback: (String?, Throwable?) -> Unit = { code, error ->
+                        if (error != null) {
+                            Log.e("KAKAO_LOGIN", "인가 코드 발급 실패", error)
+                            scope.launch { snackbarHostState.showSnackbar("로그인에 실패했습니다: ${error.message}") }
+                        } else if (code != null) {
+                            Log.i("KAKAO_LOGIN", "인가 코드 발급 성공: $code")
+                            viewModel.requestKakaoLoginWithAuthCode(code)
+                        }
+                    }
+
+                    if (AuthCodeClient.instance.isKakaoTalkLoginAvailable(context)) {
+                        AuthCodeClient.instance.authorizeWithKakaoTalk(context) { code, error ->
+                            if (error != null) {
+                                Log.e("KAKAO_LOGIN", "카카오톡으로 인가 코드 받기 실패", error)
+
+                                if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
+                                    return@authorizeWithKakaoTalk
+                                }
+
+                                AuthCodeClient.instance.authorizeWithKakaoAccount(context, callback = authCodeCallback)
+                            } else if (code != null) {
+                                authCodeCallback(code, null)
+                            }
+                        }
+                    } else {
+                        AuthCodeClient.instance.authorizeWithKakaoAccount(context, callback = authCodeCallback)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE500), contentColor = Color(0xFF191919))
+            ) {
+                Icon(painter = painterResource(id = R.drawable.ic_kakao), contentDescription = null, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("카카오톡으로 간편 로그인", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+                
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text("계정이 없다면?", color = Color.Gray, fontSize = 14.sp)
+                TextButton(onClick = { navController.navigate("register") }) {
+                    Text("회원가입", color = Color(0xFF2CA0F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+        
+        if (loginState == LoginState.Loading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         }
     }

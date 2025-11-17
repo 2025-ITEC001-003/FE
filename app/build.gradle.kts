@@ -1,10 +1,17 @@
+import java.util.Properties
+
+val localProperties = Properties()
+val localPropertiesFile = project.rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
@@ -19,15 +26,22 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = localProperties.getProperty("KAKAO_NATIVE_APP_KEY", "")
+        manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {
+        debug {
+            // 로컬 테스트를 위해 에뮬레이터에서 호스트 PC의 localhost를 가리키는 10.0.2.2를 사용합니다.
+            buildConfigField("String", "SERVER_URL", "\"http://10.0.2.2:8000/\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "SERVER_URL", "\"http://3.37.68.172:8000/\"")
         }
     }
     compileOptions {
@@ -77,6 +91,7 @@ dependencies {
 
     // OkHttp
     implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -86,6 +101,9 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
+
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
 
     // Maps
     implementation(libs.maps.compose)
@@ -99,9 +117,4 @@ dependencies {
 
     // Kakao
     implementation(libs.kakao.user)
-}
-
-
-secrets {
-    defaultPropertiesFileName = "app/secrets.properties"
 }
