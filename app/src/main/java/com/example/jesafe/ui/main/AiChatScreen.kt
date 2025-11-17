@@ -7,7 +7,12 @@ import android.content.Intent
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -21,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -70,21 +76,35 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.jesafe.R
-import com.example.jesafe.ui.theme.JeSafeTheme
-import com.example.jesafe.ui.theme.OffWhite
-import com.example.jesafe.ui.theme.LightGrey
-import com.example.jesafe.ui.theme.LightSkyBlue
-import com.example.jesafe.ui.theme.NavyBlue
-import com.example.jesafe.ui.theme.SoftBlue
 import com.example.jesafe.ui.theme.DeepBlue
+import com.example.jesafe.ui.theme.JeSafeTheme
+import com.example.jesafe.ui.theme.LightGrey
+import com.example.jesafe.ui.theme.NavyBlue
+import com.example.jesafe.ui.theme.OffWhite
+import com.example.jesafe.ui.theme.SoftBlue
 import kotlinx.coroutines.launch
+
+private object AiChatScreenDefaults {
+    const val DOT_ANIMATION_DURATION = 1200
+    const val DOT_DELAY_1 = 0
+    const val DOT_DELAY_2 = 150
+    const val DOT_DELAY_3 = 300
+    const val DOT_BOUNCE_START = 200
+    const val DOT_BOUNCE_END = 400
+
+    val DotSize = 7.dp
+    val DotSpacing = 5.dp
+    val BounceHeight = 4.dp
+}
 
 /**
  * 채팅 메시지를 나타내는 데이터 클래스
@@ -125,7 +145,7 @@ fun AiChatScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     Scaffold(
         containerColor = OffWhite,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -133,7 +153,7 @@ fun AiChatScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "AI 안전 도우미",
+                        stringResource(R.string.ai_safe_helper),
                         style = MaterialTheme.typography.titleLarge,
                         color = NavyBlue
                     )
@@ -158,7 +178,7 @@ fun AiChatScreen(
                 .padding(innerPadding)
         ) {
             SubtleBackgroundPattern()
-            
+
             if (messages.isEmpty()) {
                 EmptyStateContent(
                     onSuggestionClick = { suggestion ->
@@ -244,7 +264,7 @@ fun EmptyStateContent(onSuggestionClick: (String) -> Unit) {
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_robot),
-                contentDescription = "AI",
+                contentDescription = stringResource(R.string.ai),
                 tint = Color(0xFF2CA0F3),
                 modifier = Modifier.size(48.dp)
             )
@@ -253,7 +273,7 @@ fun EmptyStateContent(onSuggestionClick: (String) -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "안전 AI 도우미입니다",
+            text = stringResource(R.string.welcome_message),
             style = MaterialTheme.typography.headlineSmall,
             color = Color.Black
         )
@@ -261,7 +281,7 @@ fun EmptyStateContent(onSuggestionClick: (String) -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "교통 안전과 관련된 질문을 해보세요",
+            text = stringResource(R.string.ask_safety_questions),
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
@@ -269,7 +289,7 @@ fun EmptyStateContent(onSuggestionClick: (String) -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "추천 질문",
+            text = stringResource(R.string.suggested_questions),
             style = MaterialTheme.typography.titleSmall,
             color = Color.Gray,
             modifier = Modifier.align(Alignment.Start)
@@ -278,10 +298,10 @@ fun EmptyStateContent(onSuggestionClick: (String) -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
 
         val suggestions = listOf(
-            "이 지역은 안전한가요?",
-            "야간 운전 시 주의사항은?",
-            "사고 다발 지역은 어디인가요?",
-            "비오는 날 안전 운전 팁"
+            stringResource(R.string.suggestion1),
+            stringResource(R.string.suggestion2),
+            stringResource(R.string.suggestion3),
+            stringResource(R.string.suggestion4)
         )
 
         suggestions.forEach { suggestion ->
@@ -340,8 +360,8 @@ fun SuggestionCard(text: String, onClick: () -> Unit) {
  * 메시지 버블 컴포저블
  *
  * 사용자 또는 AI의 메시지를 말풍선 형태로 표시합니다.
+ * AI 응답 대기 중에는 타이핑 애니메이션을 표시합니다.
  * 길게 누르면 복사, 공유, 삭제 옵션이 있는 컨텍스트 메뉴가 나타납니다.
- * 선택 시 시각적 피드백(스케일 애니메이션, 색상 변경, 그림자 효과)을 제공합니다.
  *
  * @param message 표시할 메시지 객체
  * @param snackbarHostState 스낵바 표시를 위한 HostState
@@ -358,6 +378,8 @@ fun MessageBubble(
     var showMenu by remember { mutableStateOf(false) }
     var isSelected by remember { mutableStateOf(false) }
 
+    val isTypingIndicator = message.text == stringResource(R.string.loading)
+
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 0.98f else 1f,
         label = "message_scale"
@@ -369,7 +391,7 @@ fun MessageBubble(
                 copyToClipboard(context, text)
                 performHapticFeedback(view)
                 scope.launch {
-                    snackbarHostState.showSnackbar("📋 클립보드에 복사되었어요")
+                    snackbarHostState.showSnackbar(context.getString(R.string.copied_to_clipboard))
                 }
             },
             onShare = { text ->
@@ -379,7 +401,7 @@ fun MessageBubble(
             onDelete = {
                 performHapticFeedback(view)
                 scope.launch {
-                    snackbarHostState.showSnackbar("🗑️ 메시지가 삭제되었습니다")
+                    snackbarHostState.showSnackbar(context.getString(R.string.message_deleted))
                 }
             }
         )
@@ -411,6 +433,7 @@ fun MessageBubble(
                             )
                         )
                         .combinedClickable(
+                            enabled = !isTypingIndicator, // 로딩 중에는 클릭 비활성화
                             onClick = { },
                             onLongClick = {
                                 isSelected = true
@@ -435,32 +458,88 @@ fun MessageBubble(
                         defaultElevation = 0.dp
                     )
                 ) {
-                    Text(
-                        text = message.text,
-                        color = if (message.isUser) Color.White else NavyBlue,
-                        modifier = Modifier.padding(14.dp),
-                        fontSize = 15.sp,
-                        lineHeight = 20.sp
-                    )
+                    if (isTypingIndicator) {
+                        TypingIndicator()
+                    } else {
+                        Text(
+                            text = message.text,
+                            color = if (message.isUser) Color.White else NavyBlue,
+                            modifier = Modifier.padding(14.dp),
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp
+                        )
+                    }
                 }
 
-                MessageContextMenu(
-                    expanded = showMenu,
-                    onDismiss = {
-                        showMenu = false
-                        isSelected = false
-                    },
-                    message = message,
-                    actions = messageActions
-                )
+                if (!isTypingIndicator) {
+                    MessageContextMenu(
+                        expanded = showMenu,
+                        onDismiss = {
+                            showMenu = false
+                            isSelected = false
+                        },
+                        message = message,
+                        actions = messageActions
+                    )
+                }
             }
 
-            if (!message.isUser && message.text != "...") {
+            if (!message.isUser && !isTypingIndicator) {
                 Text(message.timestamp, fontSize = 10.sp, color = Color.Gray)
             }
         }
     }
 }
+
+/**
+ * AI 응답 대기 중 표시되는 타이핑 애니메이션입니다.
+ * 세 개의 점이 순차적으로 위아래로 움직이는 효과를 통해
+ * 사용자에게 AI가 응답을 생성하고 있음을 시각적으로 전달합니다.
+ *
+ * @param modifier Modifier
+ */
+@Composable
+fun TypingIndicator(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "typing_indicator_transition")
+
+    @Composable
+    fun Dot(delay: Int) {
+        val yOffset by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 0f,
+            animationSpec = infiniteRepeatable(
+                animation = keyframes {
+                    durationMillis = AiChatScreenDefaults.DOT_ANIMATION_DURATION
+                    0f at delay
+                    -AiChatScreenDefaults.BounceHeight.value at (delay + AiChatScreenDefaults.DOT_BOUNCE_START)
+                    0f at (delay + AiChatScreenDefaults.DOT_BOUNCE_END)
+                    0f at AiChatScreenDefaults.DOT_ANIMATION_DURATION
+                },
+                repeatMode = RepeatMode.Restart
+            ), label = "dot_offset"
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(y = yOffset.dp)
+                .size(AiChatScreenDefaults.DotSize)
+                .background(
+                    color = NavyBlue.copy(alpha = 0.5f),
+                    shape = CircleShape
+                )
+        )
+    }
+
+    Row(
+        modifier = modifier.padding(vertical = 12.dp, horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(AiChatScreenDefaults.DotSpacing)
+    ) {
+        Dot(delay = AiChatScreenDefaults.DOT_DELAY_1)
+        Dot(delay = AiChatScreenDefaults.DOT_DELAY_2)
+        Dot(delay = AiChatScreenDefaults.DOT_DELAY_3)
+    }
+}
+
 
 /**
  * 메시지 컨텍스트 메뉴
@@ -494,12 +573,12 @@ private fun MessageContextMenu(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_copy),
-                        contentDescription = "복사하기",
+                        contentDescription = stringResource(R.string.copy),
                         tint = Color(0xFF2CA0F3),
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "복사하기",
+                        text = stringResource(R.string.copy),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Black
                     )
@@ -513,17 +592,17 @@ private fun MessageContextMenu(
 
         MenuAction(
             icon = Icons.Default.Share,
-            text = "공유하기",
+            text = stringResource(R.string.share),
             onClick = {
                 actions.onShare(message.text)
                 onDismiss()
             }
         )
 
-        if (!message.text.contains("...")) {
+        if (message.text != stringResource(R.string.loading)) {
             MenuAction(
                 icon = Icons.Default.Delete,
-                text = "삭제하기",
+                text = stringResource(R.string.delete),
                 iconTint = Color(0xFFE53935),
                 onClick = {
                     actions.onDelete()
@@ -614,7 +693,7 @@ private fun shareText(context: Context, text: String) {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    context.startActivity(Intent.createChooser(intent, "공유하기"))
+    context.startActivity(Intent.createChooser(intent, context.getString(R.string.share)))
 }
 
 /**
@@ -684,7 +763,7 @@ fun ChatInputField(
                 ) {
                     Icon(
                         painterResource(id = R.drawable.ic_robot),
-                        contentDescription = "Bot",
+                        contentDescription = stringResource(R.string.ai),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -694,7 +773,7 @@ fun ChatInputField(
                     value = text,
                     onValueChange = onTextChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("메시지를 입력하세요...", color = Color.Gray) },
+                    placeholder = { Text(stringResource(R.string.enter_message), color = Color.Gray) },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -712,14 +791,14 @@ fun ChatInputField(
                     IconButton(onClick = onSendMessage) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
+                            contentDescription = stringResource(R.string.send),
                             tint = Color(0xFF2CA0F3)
                         )
                     }
                 } else {
                     Icon(
                         painterResource(id = R.drawable.ic_mic),
-                        contentDescription = "Mic",
+                        contentDescription = stringResource(R.string.mic),
                         tint = Color.Gray,
                         modifier = Modifier.size(24.dp)
                     )

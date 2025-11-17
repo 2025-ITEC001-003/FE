@@ -1,5 +1,23 @@
 <resources>
     <string name="app_name">JeSafe</string>
+    <string name="ai_safe_helper">AI 안전 도우미</string>
+    <string name="copied_to_clipboard">📋 클립보드에 복사되었어요</string>
+    <string name="message_deleted">🗑️ 메시지가 삭제되었습니다</string>
+    <string name="copy">복사하기</string>
+    <string name="share">공유하기</string>
+    <string name="delete">삭제하기</string>
+    <string name="enter_message">메시지를 입력하세요...</string>
+    <string name="ai">AI</string>
+    <string name="welcome_message">안전 AI 도우미입니다</string>
+    <string name="ask_safety_questions">교통 안전과 관련된 질문을 해보세요</string>
+    <string name="suggested_questions">추천 질문</string>
+    <string name="suggestion1">이 지역은 안전한가요?</string>
+    <string name="suggestion2">야간 운전 시 주의사항은?</string>
+    <string name="suggestion3">사고 다발 지역은 어디인가요?</string>
+    <string name="suggestion4">비오는 날 안전 운전 팁</string>
+    <string name="send">Send</string>
+    <string name="mic">Mic</string>
+    <string name="loading">...</string>
 
     <!-- 오류 메시지 -->
     <string name="error_password_too_short">비밀번호는 %1$d자 이상이어야 합니다</string>
