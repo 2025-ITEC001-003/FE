@@ -18,4 +18,13 @@
     <string name="send">Send</string>
     <string name="mic">Mic</string>
     <string name="loading">...</string>
+
+    <!-- 오류 메시지 -->
+    <string name="error_password_too_short">비밀번호는 %1$d자 이상이어야 합니다</string>
+    <string name="error_password_too_long">비밀번호는 최대 %1$d자까지 가능합니다</string>
+    <string name="error_password_invalid">문자/숫자/특수문자를 모두 포함해야 합니다</string>
+    <string name="error_password_not_match">비밀번호가 일치하지 않습니다</string>
+    <string name="error_name_max_length">이름은 최대 %1$d자까지 가능합니다</string>
+    <string name="error_email_invalid">올바른 이메일 형식이 아닙니다</string>
+
 </resources>
