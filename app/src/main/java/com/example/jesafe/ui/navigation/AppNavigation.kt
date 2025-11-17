@@ -1,6 +1,7 @@
 package com.example.jesafe.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -8,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.jesafe.ui.auth.AdditionalInfoScreen
 import com.example.jesafe.ui.auth.LoginScreen
+import com.example.jesafe.ui.auth.LoginViewModel
 import com.example.jesafe.ui.auth.RegisterScreen
 import com.example.jesafe.ui.auth.RegistrationCompleteScreen
 import com.example.jesafe.ui.main.ChangeEmailScreen
@@ -21,12 +23,15 @@ import com.example.jesafe.ui.main.UnderlyingDiseaseScreen
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    // 여러 화면에서 공유할 LoginViewModel을 상위 레벨에서 생성
+    val loginViewModel: LoginViewModel = hiltViewModel()
+
     NavHost(navController = navController, startDestination = "login") {
         composable("main") {
-            MainScreen(rootNavController = navController)
+            MainScreen(rootNavController = navController, loginViewModel = loginViewModel)
         }
         composable("login") {
-            LoginScreen(navController = navController)
+            LoginScreen(navController = navController, viewModel = loginViewModel)
         }
         composable("register") {
             RegisterScreen(navController = navController)

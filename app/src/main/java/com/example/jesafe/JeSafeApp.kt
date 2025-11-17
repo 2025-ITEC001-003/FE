@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.jesafe.data.local.AppDatabase
 import com.example.jesafe.utils.CsvImporter
 import com.kakao.sdk.common.KakaoSdk
+import com.kakao.sdk.common.util.Utility
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,10 @@ class JeSafeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // 디버그 키 해시 값 로깅
+        val keyHash = Utility.getKeyHash(this)
+        Log.d("KEY_HASH", keyHash)
 
         // Kakao SDK 초기화
         KakaoSdk.init(this, "bb30f164f208df568bc0c2a1d39d20b0")

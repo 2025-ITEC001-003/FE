@@ -35,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,17 +44,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.jesafe.ui.auth.LoginViewModel
 import com.example.jesafe.ui.theme.JeSafeTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyInfoScreen(rootNavController: NavController) {
+fun MyInfoScreen(
+    rootNavController: NavController,
+    loginViewModel: LoginViewModel = hiltViewModel()
+) {
     var name by remember { mutableStateOf("WWIT") }
     var phoneNumber by remember { mutableStateOf("010-xxxx-0864") }
     var email by remember { mutableStateOf("@gmail.com") }
     var diseaseInfo by remember { mutableStateOf("고혈압, 당뇨 등") }
+    val coroutineScope = rememberCoroutineScope()
 
     val navBackStackEntry = rootNavController.currentBackStackEntry
 
@@ -98,7 +106,7 @@ fun MyInfoScreen(rootNavController: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        containerColor = Color(0xFFF2F2F7) // A light gray that matches system UI
+        containerColor = Color(0xFFF2F2F7)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -108,7 +116,6 @@ fun MyInfoScreen(rootNavController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Section: 내 정보 관리
             SectionHeader(text = "내 정보 관리")
             Column(Modifier.background(Color.White)) {
                 MyInfoRow(
@@ -148,15 +155,17 @@ fun MyInfoScreen(rootNavController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section: 개인 설정 관리
             SectionHeader(text = "개인 설정 관리")
             Column(Modifier.background(Color.White)) {
                 MyInfoRow(title = "즐겨찾는 장소 관리")
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(title = "로그아웃", onClick = {
-                    rootNavController.navigate("login") {
-                        popUpTo(rootNavController.graph.id) {
-                            inclusive = true
+                    coroutineScope.launch {
+                        loginViewModel.logout()
+                        rootNavController.navigate("login") {
+                            popUpTo(rootNavController.graph.id) {
+                                inclusive = true
+                            }
                         }
                     }
                 })
@@ -191,7 +200,6 @@ private fun MyInfoRow(
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             if (subtitle != null) {
-                // With subtitle
                 Text(text = title, fontSize = 16.sp, color = Color.Black)
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -202,7 +210,6 @@ private fun MyInfoRow(
                     }
                 }
             } else {
-                // Title only
                 Text(text = title, fontSize = 16.sp, color = Color.Black)
             }
         }
@@ -214,6 +221,7 @@ private fun MyInfoRow(
     }
 }
 
+/*
 @Preview(showBackground = true)
 @Composable
 fun MyInfoScreenPreview() {
@@ -221,3 +229,4 @@ fun MyInfoScreenPreview() {
         MyInfoScreen(rememberNavController())
     }
 }
+*/
