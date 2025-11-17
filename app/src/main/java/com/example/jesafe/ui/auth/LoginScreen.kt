@@ -30,6 +30,9 @@ import com.kakao.sdk.user.UserApiClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(navController: NavController) {
@@ -179,11 +182,18 @@ fun LoginScreen(navController: NavController) {
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFACC15), contentColor = Color.DarkGray)
+                    contentPadding = PaddingValues(0.dp),    // 내부 여백 제거
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.Unspecified
+                    )
                 ) {
-                    Icon(painter = painterResource(id = R.drawable.ic_kakao), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFF391E1F))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("카카오톡으로 간편 로그인", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Image(
+                        painter = painterResource(id = R.drawable.kakao_login_large_wide),
+                        contentDescription = "카카오톡으로 간편 로그인",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
