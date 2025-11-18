@@ -1,11 +1,5 @@
 import java.util.Properties
 
-val localProperties = Properties()
-val localPropertiesFile = project.rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(localPropertiesFile.inputStream())
-}
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -104,6 +98,7 @@ dependencies {
 
     // OkHttp
     implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
 
     // Hilt
     implementation(libs.hilt.android)
