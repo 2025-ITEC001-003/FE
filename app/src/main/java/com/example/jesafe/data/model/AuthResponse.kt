@@ -12,6 +12,24 @@ data class AuthResponse(
     @SerializedName("is_new_user")
     val isNewUser: Boolean,
 
+    @SerializedName("id")
+    val id: Long,
+
     @SerializedName("nickname")
-    val nickname: String?
+    val nickname: String?,
+
+    @SerializedName("birth_year")
+    val birthYear: Int?,
+
+    @SerializedName("gender")
+    val gender: String?,
+
+    @SerializedName("disease_info")
+    val diseaseInfo: String?,
+    
+    @SerializedName("phone")
+    val phone: String?,
+
+    @SerializedName("email")
+    val email: String?
 )

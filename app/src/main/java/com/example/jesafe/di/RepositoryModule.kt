@@ -2,6 +2,8 @@ package com.example.jesafe.di
 
 import com.example.jesafe.data.repository.AuthRepository
 import com.example.jesafe.data.repository.AuthRepositoryImpl
+import com.example.jesafe.data.repository.UserRepository
+import com.example.jesafe.data.repository.UserRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -19,4 +21,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(impl: UserRepositoryImpl): UserRepository
 }
