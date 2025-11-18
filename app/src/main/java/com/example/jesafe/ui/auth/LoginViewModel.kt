@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.jesafe.data.datastore.UserPreferencesRepository
 import com.example.jesafe.data.model.AuthRequest
 import com.example.jesafe.data.repository.AuthRepository
+import com.example.jesafe.data.repository.UserRepository
+import com.example.jesafe.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,15 +23,16 @@ sealed class LoginState {
     object Initial : LoginState()
     object Loading : LoginState()
     // 기존 사용자로 로그인 성공
-    data class ExistingUser(val serverAccessToken: String) : LoginState()
+    data class ExistingUser(val user: User) : LoginState()
     // 신규 사용자로 로그인 성공
-    data class NewUser(val serverAccessToken: String, val nickname: String?) : LoginState()
+    data class NewUser(val user: User) : LoginState()
     data class Error(val message: String) : LoginState()
 }
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
@@ -43,8 +46,9 @@ class LoginViewModel @Inject constructor(
     private fun checkLoginStatus() {
         viewModelScope.launch {
             val token = userPreferencesRepository.accessToken.first()
-            if (!token.isNullOrBlank()) {
-                _loginState.value = LoginState.ExistingUser(token)
+            val user = userRepository.getUser().first()
+            if (!token.isNullOrBlank() && user != null) {
+                _loginState.value = LoginState.ExistingUser(user)
             }
         }
     }
@@ -58,15 +62,33 @@ class LoginViewModel @Inject constructor(
                 val response = authRepository.requestKakaoLogin(AuthRequest(authCode))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
-                    Log.d("LOGIN_API_TEST", "[Response Body] 서버 응답 전체: $body") // 서버 응답 전체 로그 추가
-                    val serverToken = body.accessToken
-                    userPreferencesRepository.saveAccessToken(serverToken)
-
-                    // 서버 응답에 따라 상태 분기
+                    Log.d("LOGIN_API_TEST", "[Response Body] 서버 응답 전체: $body")
+                    userPreferencesRepository.saveAccessToken(body.accessToken)
+                    
                     if (body.isNewUser) {
-                        _loginState.value = LoginState.NewUser(serverToken, body.nickname)
+                        val newUser = User(
+                            id = body.id, 
+                            nickname = body.nickname ?: "사용자",
+                            birthYear = null,
+                            gender = null,
+                            diseaseInfo = null,
+                            phone = null,
+                            email = null
+                        )
+                        userRepository.saveUser(newUser)
+                        _loginState.value = LoginState.NewUser(newUser)
                     } else {
-                        _loginState.value = LoginState.ExistingUser(serverToken)
+                        val existingUser = User(
+                            id = body.id,
+                            nickname = body.nickname ?: "사용자",
+                            birthYear = body.birthYear,
+                            gender = body.gender,
+                            diseaseInfo = body.diseaseInfo,
+                            phone = body.phone,
+                            email = body.email
+                        )
+                        userRepository.saveUser(existingUser)
+                        _loginState.value = LoginState.ExistingUser(existingUser)
                     }
 
                 } else {
@@ -81,18 +103,9 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun performFakeLogin() {
-        viewModelScope.launch {
-            _loginState.value = LoginState.Loading
-            val fakeToken = "fake-jwt-token-for-testing"
-            userPreferencesRepository.saveAccessToken(fakeToken)
-            _loginState.value = LoginState.ExistingUser(fakeToken)
-        }
-    }
-
     suspend fun logout() {
         authRepository.logout()
-        userPreferencesRepository.clear()
+        userPreferencesRepository.clearAccessToken()
         _loginState.value = LoginState.Initial
     }
 }

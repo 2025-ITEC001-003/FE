@@ -91,7 +91,7 @@ fun LoginScreen(
             }
 
             is LoginState.NewUser -> {
-                val nickname = state.nickname ?: "사용자"
+                val nickname = state.user.nickname ?: "사용자"
                 navController.navigate("additional_info/$nickname") {
                     popUpTo("login") { inclusive = true }
                 }
@@ -107,11 +107,11 @@ fun LoginScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-    ) {
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
+                .padding(innerPadding)
                 .padding(horizontal = 24.dp),
         ) {
 
