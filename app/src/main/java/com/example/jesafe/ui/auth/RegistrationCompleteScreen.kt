@@ -22,13 +22,14 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 import kotlinx.coroutines.delay
 
 @Composable
-fun RegistrationCompleteScreen(navController: NavController, name: String) { // name 파라미터 추가
+fun RegistrationCompleteScreen(navController: NavController, name: String) {
 
     LaunchedEffect(Unit) {
-        delay(3000)
-        navController.navigate("login") {
-            // MyInfoScreen(startDestination)은 남기고 그 위의 모든 화면을 제거합니다.
-            popUpTo(navController.graph.startDestinationId) { inclusive = false }
+        delay(3000) // 2초 딜레이
+        navController.navigate("main") { // 메인 화면으로 이동
+            popUpTo("login") { 
+                inclusive = true // 로그인 화면까지 모두 스택에서 제거
+            }
             launchSingleTop = true
         }
     }
@@ -50,7 +51,7 @@ fun RegistrationCompleteScreen(navController: NavController, name: String) { // 
             )
             Spacer(modifier = Modifier.height(18.dp))
             Text(
-                text = "${name}님,\n환영합니다!", // 수정: 변수를 중괄호로 감싸서 명확하게 함
+                text = "${name}님,\n환영합니다!",
                 fontSize = 42.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black,
@@ -72,7 +73,6 @@ fun RegistrationCompleteScreen(navController: NavController, name: String) { // 
 @Composable
 fun RegistrationCompleteScreenPreview() {
     JeSafeTheme {
-        // Preview에서는 "홍길동"이라는 가짜 이름을 전달하여 테스트합니다.
         RegistrationCompleteScreen(navController = rememberNavController(), "홍길동")
     }
 }
