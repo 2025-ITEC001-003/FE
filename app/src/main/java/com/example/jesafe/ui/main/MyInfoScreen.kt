@@ -129,11 +129,6 @@ fun MyInfoScreen(
                 )
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
-                    title = "비밀번호 변경",
-                    onClick = { rootNavController.navigate("change_password") }
-                )
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
-                MyInfoRow(
                     title = "알림 설정",
                     onClick = { rootNavController.navigate("notification_settings") }
                 )

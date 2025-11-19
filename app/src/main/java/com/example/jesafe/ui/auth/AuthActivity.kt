@@ -5,16 +5,26 @@ import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.jesafe.ui.components.LoadingIndicator
 import com.example.jesafe.ui.main.MyInfoScreen
+import com.example.jesafe.ui.navigation.Routes
 import com.example.jesafe.ui.theme.JeSafeTheme
+import com.example.jesafe.viewmodel.AdditionalInfoViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -53,34 +63,61 @@ class AuthActivity : ComponentActivity() {
 @Composable
 fun AuthNavigation() {
     val navController: NavHostController = rememberNavController()
+    // 공통 ViewModel 생성
+    val loginViewModel: LoginViewModel = hiltViewModel()
+    val additionalInfoViewModel: AdditionalInfoViewModel = hiltViewModel()
 
-    NavHost(navController = navController, startDestination = "login") {
-        composable(route = "login") {
-            LoginScreen(navController = navController)
-        }
+    val loginState by loginViewModel.loginState.collectAsState()
 
-        composable(route = "register") {
-            RegisterScreen(navController = navController)
+    // 앱 시작 시 로그인 상태를 확인하고 올바른 화면으로 리디렉션
+    LaunchedEffect(loginState) {
+        val route = when (loginState) {
+            is LoginState.ExistingUser -> Routes.MAIN // 또는 "my_info"
+            is LoginState.Initial -> Routes.LOGIN
+            else -> null
         }
+        route?.let {
+            navController.navigate(it) {
+                popUpTo(Routes.SPLASH) { inclusive = true }
+            }
+        }
+    }
 
-        composable(
-            route = "additional_info/{name}",
-            arguments = listOf(navArgument("name") { type = NavType.StringType })
-        ) {
-            val name = it.arguments?.getString("name") ?: ""
-            AdditionalInfoScreen(navController = navController, name = name)
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(navController = navController, startDestination = Routes.SPLASH) {
+            composable(Routes.SPLASH) {
+                SplashScreen()
+            }
+            composable(Routes.LOGIN) {
+                LoginScreen(navController = navController, viewModel = loginViewModel)
+            }
+            composable(Routes.REGISTER) {
+                RegisterScreen(navController = navController)
+            }
+            composable(
+                route = Routes.ADDITIONAL_INFO,
+                arguments = listOf(navArgument("name") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val name = backStackEntry.arguments?.getString("name") ?: ""
+                AdditionalInfoScreen(navController = navController, name = name, viewModel = additionalInfoViewModel)
+            }
+            composable(Routes.ADDITIONAL_INFO_CONTACT) {
+                AdditionalInfoContactScreen(navController = navController, viewModel = additionalInfoViewModel)
+            }
+            composable(Routes.ADDITIONAL_INFO_DISEASE) {
+                AdditionalInfoDiseaseScreen(navController = navController, viewModel = additionalInfoViewModel)
+            }
+            composable(
+                route = Routes.REGISTRATION_COMPLETE,
+                arguments = listOf(navArgument("name") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val name = backStackEntry.arguments?.getString("name") ?: ""
+                RegistrationCompleteScreen(navController = navController, name = name)
+            }
+            composable(route = "my_info") { // TODO: Routes에 경로 추가
+                MyInfoScreen(rootNavController = navController, loginViewModel = loginViewModel)
+            }
         }
-
-        composable(
-            route = "registration_complete/{name}",
-            arguments = listOf(navArgument("name") { type = NavType.StringType })
-        ) {
-            val name = it.arguments?.getString("name") ?: ""
-            RegistrationCompleteScreen(navController = navController, name = name)
-        }
-
-        composable(route = "my_info") {
-            MyInfoScreen(rootNavController = navController)
-        }
+        LoadingIndicator()
     }
 }

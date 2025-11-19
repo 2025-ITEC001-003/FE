@@ -3,6 +3,9 @@ package com.example.jesafe.ui.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -14,9 +17,11 @@ import com.example.jesafe.ui.auth.AdditionalInfoContactScreen
 import com.example.jesafe.ui.auth.AdditionalInfoDiseaseScreen
 import com.example.jesafe.ui.auth.AdditionalInfoScreen
 import com.example.jesafe.ui.auth.LoginScreen
+import com.example.jesafe.ui.auth.LoginState
 import com.example.jesafe.ui.auth.LoginViewModel
 import com.example.jesafe.ui.auth.RegisterScreen
 import com.example.jesafe.ui.auth.RegistrationCompleteScreen
+import com.example.jesafe.ui.auth.SplashScreen
 import com.example.jesafe.ui.components.LoadingIndicator
 import com.example.jesafe.ui.main.ChangeEmailScreen
 import com.example.jesafe.ui.main.ChangeNameScreen
@@ -34,8 +39,27 @@ fun AppNavigation() {
     val loginViewModel: LoginViewModel = hiltViewModel()
     val additionalInfoViewModel: AdditionalInfoViewModel = hiltViewModel()
 
+    val loginState by loginViewModel.loginState.collectAsState()
+
+    // 앱 시작 시 로그인 상태를 확인하고 올바른 화면으로 리디렉션
+    LaunchedEffect(loginState) {
+        val route = when (loginState) {
+            is LoginState.ExistingUser -> Routes.MAIN
+            is LoginState.Initial -> Routes.LOGIN
+            else -> null // Loading, NewUser, Error 등의 상태에서는 아무것도 하지 않음
+        }
+        route?.let {
+            navController.navigate(it) {
+                popUpTo(Routes.SPLASH) { inclusive = true }
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(navController = navController, startDestination = Routes.LOGIN) {
+        NavHost(navController = navController, startDestination = Routes.SPLASH) {
+            composable(Routes.SPLASH) {
+                SplashScreen()
+            }
             composable(Routes.MAIN) {
                 MainScreen(rootNavController = navController, loginViewModel = loginViewModel)
             }

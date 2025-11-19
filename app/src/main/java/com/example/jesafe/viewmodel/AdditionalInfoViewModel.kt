@@ -28,10 +28,49 @@ class AdditionalInfoViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
+    // UI 상태 (로딩, 성공, 실패)
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Initial)
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
-    fun saveAdditionalInfo(birthYear: String, gender: String, diseaseInfo: String?) {
+    // 사용자 이름
+    private val _userName = MutableStateFlow<String>("사용자")
+    val userName: StateFlow<String> = _userName.asStateFlow()
+
+    // 1단계 정보
+    private val _birthYear = MutableStateFlow<String?>(null)
+    private val _gender = MutableStateFlow<String?>(null)
+
+    // 2단계 정보
+    private val _email = MutableStateFlow<String?>(null)
+    private val _phone = MutableStateFlow<String?>(null)
+
+    /**
+     * 화면 진입 시 사용자 이름을 설정합니다.
+     */
+    fun setUserName(name: String) {
+        _userName.value = name
+    }
+
+    /**
+     * 1단계 (성별, 출생년도) 정보를 ViewModel에 저장합니다.
+     */
+    fun saveBirthAndGender(birthYear: String, gender: String) {
+        _birthYear.value = birthYear
+        _gender.value = gender
+    }
+
+    /**
+     * 2단계 (이메일, 전화번호) 정보를 ViewModel에 저장합니다.
+     */
+    fun saveContact(email: String, phone: String) {
+        _email.value = email
+        _phone.value = phone
+    }
+
+    /**
+     * 3단계 (기저질환) 정보를 저장하고, 취합된 모든 정보로 서버에 회원가입(정보 업데이트)을 요청합니다.
+     */
+    fun saveDiseaseAndRegister(diseaseInfo: String?) {
         viewModelScope.launch {
             _updateState.value = UpdateState.Loading
             try {
@@ -41,29 +80,29 @@ class AdditionalInfoViewModel @Inject constructor(
                     return@launch
                 }
 
+                // ViewModel에 저장된 모든 정보를 사용하여 요청 객체 생성
                 val request = UpdateUserRequest(
-                    birthYear = birthYear,
-                    gender = gender,
-                    diseaseInfo = diseaseInfo
+                    birthYear = _birthYear.value ?: "",
+                    gender = _gender.value ?: "",
+                    email = _email.value ?: "",
+                    phone = _phone.value ?: "",
+                    diseaseInfo = diseaseInfo ?: ""
                 )
 
                 val response = authRepository.updateUserInfo(token, request)
                 if (response.isSuccessful) {
-                    // --- 로컬 데이터 업데이트 로직 추가 ---
-                    // 1. 기존 정보를 불러옵니다.
+                    // --- 로컬 데이터 업데이트 ---
                     val currentUser = userRepository.getUser().first()
-
-                    // 2. 새로운 정보로 덮어쓰지 않고, copy를 사용하여 필요한 부분만 업데이트합니다.
                     currentUser?.let {
                         val updatedUser = it.copy(
-                            birthYear = birthYear.toIntOrNull(),
-                            gender = gender,
+                            birthYear = _birthYear.value?.toIntOrNull(),
+                            gender = _gender.value,
+                            email = _email.value,
+                            phone = _phone.value,
                             diseaseInfo = diseaseInfo
                         )
-                        // 3. 업데이트된 정보를 로컬에 저장합니다.
                         userRepository.saveUser(updatedUser)
                     }
-
                     _updateState.value = UpdateState.Success
                 } else {
                     val errorBody = response.errorBody()?.string() ?: "알 수 없는 오류"
