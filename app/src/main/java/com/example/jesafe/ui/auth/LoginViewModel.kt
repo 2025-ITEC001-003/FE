@@ -1,5 +1,6 @@
 package com.example.jesafe.ui.auth
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,10 @@ import com.example.jesafe.data.model.AuthRequest
 import com.example.jesafe.data.repository.AuthRepository
 import com.example.jesafe.data.repository.UserRepository
 import com.example.jesafe.model.User
+import com.example.jesafe.state.LoadingState
+import com.kakao.sdk.auth.AuthCodeClient
+import com.kakao.sdk.common.model.ClientError
+import com.kakao.sdk.common.model.ClientErrorCause
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,21 +58,62 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 카카오 로그인을 시작하고 인증 코드를 요청합니다.
+     *
+     * 인증 코드를 성공적으로 받으면 `requestKakaoLoginWithAuthCode`를 호출하여 서버에 로그인을 요청합니다.
+     *
+     * @param context 카카오 SDK가 사용할 컨텍스트.
+     */
+    fun startKakaoLogin(context: Context) {
+        val authCodeCallback: (String?, Throwable?) -> Unit = { code, error ->
+            if (error != null) {
+                Log.e("KAKAO_LOGIN", "인가 코드 발급 실패", error)
+                _loginState.value = LoginState.Error("로그인에 실패했습니다: ${error.message}")
+            } else if (code != null) {
+                Log.i("KAKAO_LOGIN", "인가 코드 발급 성공: $code")
+                requestKakaoLoginWithAuthCode(code)
+            }
+        }
+
+        if (AuthCodeClient.instance.isKakaoTalkLoginAvailable(context)) {
+            AuthCodeClient.instance.authorizeWithKakaoTalk(context) { code, error ->
+                if (error != null) {
+                    Log.e("KAKAO_LOGIN", "카카오톡으로 인가 코드 받기 실패", error)
+
+                    if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
+                        return@authorizeWithKakaoTalk
+                    }
+
+                    AuthCodeClient.instance.authorizeWithKakaoAccount(
+                        context,
+                        callback = authCodeCallback
+                    )
+                } else if (code != null) {
+                    authCodeCallback(code, null)
+                }
+            }
+        } else {
+            AuthCodeClient.instance.authorizeWithKakaoAccount(context, callback = authCodeCallback)
+        }
+    }
+
+
     fun requestKakaoLoginWithAuthCode(authCode: String) {
         Log.d("LOGIN_API_TEST", "[Request] 서버로 전송할 인가 코드: $authCode")
 
         viewModelScope.launch {
-            _loginState.value = LoginState.Loading
+            LoadingState.show()
             try {
                 val response = authRepository.requestKakaoLogin(AuthRequest(authCode))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     Log.d("LOGIN_API_TEST", "[Response Body] 서버 응답 전체: $body")
                     userPreferencesRepository.saveAccessToken(body.accessToken)
-                    
+
                     if (body.isNewUser) {
                         val newUser = User(
-                            id = body.id, 
+                            id = body.id,
                             nickname = body.nickname ?: "사용자",
                             birthYear = null,
                             gender = null,
@@ -99,13 +145,20 @@ class LoginViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("LOGIN_API_TEST", "[Network Error] 로그인 실패: ${e.message}", e)
                 _loginState.value = LoginState.Error("로그인 실패 (네트워크): ${e.message}")
+            } finally {
+                LoadingState.hide()
             }
         }
     }
 
     suspend fun logout() {
-        authRepository.logout()
-        userPreferencesRepository.clearAccessToken()
-        _loginState.value = LoginState.Initial
+        LoadingState.show()
+        try {
+            authRepository.logout()
+            userPreferencesRepository.clearAccessToken()
+            _loginState.value = LoginState.Initial
+        } finally {
+            LoadingState.hide()
+        }
     }
 }

@@ -26,5 +26,13 @@
     <string name="error_password_not_match">비밀번호가 일치하지 않습니다</string>
     <string name="error_name_max_length">이름은 최대 %1$d자까지 가능합니다</string>
     <string name="error_email_invalid">올바른 이메일 형식이 아닙니다</string>
+    <string name="unknown_error">알 수 없는 오류가 발생했습니다.</string>
+    <string name="login_failed">로그인에 실패했습니다: %s</string>
+
+    <!-- LoginScreen -->
+    <string name="login_success">로그인 성공!</string>
+    <string name="login_welcome">혼저옵서!\n오늘은 어디로 떠나볼까요?</string>
+    <string name="login_kakao">카카오톡으로 간편 로그인</string>
+    <string name="jesafe_app_icon">JeSafe App Icon</string>
 
 </resources>

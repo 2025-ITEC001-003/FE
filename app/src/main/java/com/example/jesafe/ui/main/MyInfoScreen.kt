@@ -17,17 +17,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +53,37 @@ fun MyInfoScreen(
 ) {
     val user by myInfoViewModel.user.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("로그아웃") },
+            text = { Text("정말 로그아웃 하시겠습니까?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        coroutineScope.launch {
+                            loginViewModel.logout()
+                            rootNavController.navigate("login") {
+                                popUpTo(rootNavController.graph.id) {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("확인")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -93,11 +129,6 @@ fun MyInfoScreen(
                 )
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(
-                    title = "비밀번호 변경",
-                    onClick = { rootNavController.navigate("change_password") }
-                )
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
-                MyInfoRow(
                     title = "알림 설정",
                     onClick = { rootNavController.navigate("notification_settings") }
                 )
@@ -109,16 +140,10 @@ fun MyInfoScreen(
             Column(Modifier.background(Color.White)) {
                 MyInfoRow(title = "즐겨찾는 장소 관리")
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
-                MyInfoRow(title = "로그아웃", onClick = {
-                    coroutineScope.launch {
-                        loginViewModel.logout()
-                        rootNavController.navigate("login") {
-                            popUpTo(rootNavController.graph.id) {
-                                inclusive = true
-                            }
-                        }
-                    }
-                })
+                MyInfoRow(
+                    title = "로그아웃",
+                    onClick = { showLogoutDialog = true }
+                )
             }
         }
     }
