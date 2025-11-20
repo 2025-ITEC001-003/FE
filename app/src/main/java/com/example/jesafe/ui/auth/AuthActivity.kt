@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -12,6 +13,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -59,6 +62,7 @@ class AuthActivity : ComponentActivity() {
 /**
  * 인증 모듈의 네비게이션 그래프를 정의합니다.
  * [NavHost]를 사용하여 로그인, 회원가입, 추가 정보 입력 등의 화면 간 이동을 관리합니다.
+ * 화면의 빈 공간을 터치하면 키보드가 내려가는 기능을 포함합니다.
  */
 @Composable
 fun AuthNavigation() {
@@ -66,6 +70,7 @@ fun AuthNavigation() {
     // 공통 ViewModel 생성
     val loginViewModel: LoginViewModel = hiltViewModel()
     val additionalInfoViewModel: AdditionalInfoViewModel = hiltViewModel()
+    val focusManager = LocalFocusManager.current
 
     val loginState by loginViewModel.loginState.collectAsState()
 
@@ -83,7 +88,15 @@ fun AuthNavigation() {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
+    ) {
         NavHost(navController = navController, startDestination = Routes.SPLASH) {
             composable(Routes.SPLASH) {
                 SplashScreen()
