@@ -18,6 +18,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,8 +73,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -121,6 +124,7 @@ data class Message(val id: Long, val text: String, val isUser: Boolean, val time
  *
  * 사용자와 AI 간의 대화를 표시하고 관리합니다.
  * 메시지가 없을 때는 추천 질문을 표시하고, 메시지가 있을 때는 대화 목록을 표시합니다.
+ * 화면의 빈 공간을 터치하면 키보드가 내려가는 기능을 포함합니다.
  *
  * @param viewModel AI 채팅 뷰모델 (Hilt를 통해 자동 주입)
  */
@@ -133,11 +137,13 @@ fun AiChatScreen(
     var text by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     fun sendMessage() {
         if (text.isNotBlank()) {
             viewModel.sendMessage(text)
             text = ""
+            focusManager.clearFocus() // 키보드 내리기
             coroutineScope.launch {
                 listState.animateScrollToItem(0)
             }
@@ -147,6 +153,11 @@ fun AiChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures(onTap = {
+                focusManager.clearFocus()
+            })
+        },
         containerColor = OffWhite,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
