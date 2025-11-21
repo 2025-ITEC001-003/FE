@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.jesafe.ui.auth.LoginViewModel
+import com.example.jesafe.ui.navigation.Routes
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +55,29 @@ fun MyInfoScreen(
     val user by myInfoViewModel.user.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    val currentBackStackEntry = rootNavController.currentBackStackEntry
+    val savedStateHandle = currentBackStackEntry?.savedStateHandle
+
+    LaunchedEffect(savedStateHandle) {
+        savedStateHandle?.get<String>("newName")?.let { newName ->
+            myInfoViewModel.updateUserInfo(newNickname = newName)
+            savedStateHandle.remove<String>("newName")
+        }
+        savedStateHandle?.get<String>("newPhoneNumber")?.let { newPhone ->
+            myInfoViewModel.updateUserInfo(newPhone = newPhone)
+            savedStateHandle.remove<String>("newPhoneNumber")
+        }
+        savedStateHandle?.get<String>("newEmail")?.let { newEmail ->
+            myInfoViewModel.updateUserInfo(newEmail = newEmail)
+            savedStateHandle.remove<String>("newEmail")
+        }
+        savedStateHandle?.get<String>("newDiseaseInfo")?.let { newDiseaseInfo ->
+            myInfoViewModel.updateUserInfo(newDiseaseInfo = newDiseaseInfo)
+            savedStateHandle.remove<String>("newDiseaseInfo")
+        }
+    }
+
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -107,7 +131,10 @@ fun MyInfoScreen(
                 MyInfoRow(
                     title = "이름(닉네임)",
                     subtitle = user?.nickname ?: "로그인 정보 없음",
-                    onClick = { rootNavController.navigate("change_name") }
+                    onClick = {
+                        val currentName = user?.nickname ?: ""
+                        rootNavController.navigate("${Routes.CHANGE_NAME}/$currentName")
+                    }
                 )
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(start = 16.dp))
                 MyInfoRow(

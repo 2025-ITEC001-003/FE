@@ -69,8 +69,12 @@ fun AppNavigation() {
             composable(Routes.REGISTER) {
                 RegisterScreen(navController = navController)
             }
-            composable(Routes.CHANGE_NAME) {
-                ChangeNameScreen(navController = navController)
+            composable(
+                route = "${Routes.CHANGE_NAME}/{currentName}",
+                arguments = listOf(navArgument("currentName") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val currentName = backStackEntry.arguments?.getString("currentName") ?: ""
+                ChangeNameScreen(navController = navController, initialName = currentName)
             }
             composable(Routes.CHANGE_PHONE_NUMBER) {
                 ChangePhoneNumberScreen(navController = navController)

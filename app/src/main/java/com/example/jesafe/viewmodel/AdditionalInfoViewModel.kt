@@ -82,11 +82,12 @@ class AdditionalInfoViewModel @Inject constructor(
 
                 // ViewModel에 저장된 모든 정보를 사용하여 요청 객체 생성
                 val request = UpdateUserRequest(
+                    nickname = _userName.value, // 이름(닉네임) 추가
                     birthYear = _birthYear.value ?: "",
                     gender = _gender.value ?: "",
-                    email = _email.value ?: "",
-                    phone = _phone.value ?: "",
-                    diseaseInfo = diseaseInfo ?: ""
+                    email = _email.value,
+                    phone = _phone.value,
+                    diseaseInfo = diseaseInfo
                 )
 
                 val response = authRepository.updateUserInfo(token, request)
@@ -95,6 +96,7 @@ class AdditionalInfoViewModel @Inject constructor(
                     val currentUser = userRepository.getUser().first()
                     currentUser?.let {
                         val updatedUser = it.copy(
+                            nickname = _userName.value, // 이름 업데이트
                             birthYear = _birthYear.value?.toIntOrNull(),
                             gender = _gender.value,
                             email = _email.value,

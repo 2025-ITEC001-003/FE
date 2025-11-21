@@ -71,7 +71,7 @@ fun UnderlyingDiseaseScreen(navController: NavController) {
                             "유"
                         }
                     } else if (hasDisease == false) {
-                        "무"
+                        ""
                     } else {
                         null
                     }

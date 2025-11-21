@@ -30,8 +30,11 @@ import com.example.jesafe.ui.theme.JeSafeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChangeNameScreen(navController: NavController) {
-    var name by remember { mutableStateOf("김제주") }
+fun ChangeNameScreen(
+    navController: NavController,
+    initialName: String = ""
+) {
+    var name by remember { mutableStateOf(initialName) }
     val maxNameLength = 10
     val focusManager = LocalFocusManager.current
 
@@ -128,4 +131,3 @@ fun ChangeNameScreen(navController: NavController) {
         }
     }
 }
-
