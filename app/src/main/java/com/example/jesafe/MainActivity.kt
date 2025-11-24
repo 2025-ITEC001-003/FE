@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import com.example.jesafe.ui.navigation.AppNavigation
 import com.example.jesafe.ui.theme.JeSafeTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,6 +37,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Enable edge-to-edge display
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // 초기 데이터 로딩이 끝날 때까지 스플래시 화면을 유지합니다.
         splashScreen.setKeepOnScreenCondition {

@@ -22,6 +22,7 @@ import com.example.jesafe.ui.auth.LoginViewModel
 import com.example.jesafe.ui.auth.RegisterScreen
 import com.example.jesafe.ui.auth.RegistrationCompleteScreen
 import com.example.jesafe.ui.auth.SplashScreen
+import com.example.jesafe.ui.chatbot.ChatDetailScreen
 import com.example.jesafe.ui.components.LoadingIndicator
 import com.example.jesafe.ui.main.ChangeEmailScreen
 import com.example.jesafe.ui.main.ChangeNameScreen
