@@ -75,6 +75,7 @@ import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import androidx.navigation.navigation
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
@@ -114,7 +115,14 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                             indicatorColor = Color.Transparent
                         ),
                         onClick = {
-                            navController.navigate(screen.route) {
+                            // 🔥 AI 채팅 탭일 때는 항상 ai_chat_list 로 이동
+                            val targetRoute = if (screen.route == BottomNavItem.AiChat.route) {
+                                "ai_chat_list"
+                            } else {
+                                screen.route
+                            }
+
+                            navController.navigate(targetRoute) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -137,18 +145,17 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                 HomeScreen(mapViewModel = mapViewModel)
             }
 
-            composable(BottomNavItem.AiChat.route) {
-                // ★ 여기 수정: rootNavController → navController
-                AiChatScreen(navController = navController)
-            }
-
-            // ★ 새로 추가: 채팅 상세 화면 라우트
-            composable(
-                route = "chatDetail/{sessionId}",
-                arguments = listOf(navArgument("sessionId") { nullable = true })
-            ) { backStackEntry ->
-                val sessionId = backStackEntry.arguments?.getString("sessionId")
-                ChatDetailScreen(sessionId = sessionId)
+            navigation(startDestination = "ai_chat_list", route = BottomNavItem.AiChat.route) {
+                composable("ai_chat_list") {
+                    AiChatScreen(navController = navController)
+                }
+                composable(
+                    route = "chatDetail/{sessionId}",
+                    arguments = listOf(navArgument("sessionId") { nullable = true })
+                ) { backStackEntry ->
+                    val sessionId = backStackEntry.arguments?.getString("sessionId")
+                    ChatDetailScreen(sessionId = sessionId)
+                }
             }
 
             composable(BottomNavItem.MyInfo.route) {

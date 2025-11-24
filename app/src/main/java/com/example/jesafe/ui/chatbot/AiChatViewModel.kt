@@ -69,6 +69,14 @@ class AiChatViewModel @Inject constructor(
     fun sendMessage(query: String, sessionId: String?) {
         if (query.isBlank()) return
 
+        val userMessage = Message(
+            id = System.currentTimeMillis(),
+            text = query,
+            isUser = true,
+            timestamp = timeFormat.format(Date())
+        )
+        _messages.value = _messages.value + userMessage
+
         viewModelScope.launch {
             val isNewChat = sessionId == null
             val currentSessionId = sessionId ?: UUID.randomUUID().toString()
