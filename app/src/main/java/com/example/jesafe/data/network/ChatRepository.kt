@@ -19,7 +19,6 @@ class ChatRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "ChatRepository"
-        private const val BUFFER_SIZE = 1024
         private const val CHUNK_KEY = "chunk"
         private const val ERROR_MESSAGE = "⚠️ 응답을 받는 중 오류가 발생했습니다."
     }
@@ -71,93 +70,22 @@ class ChatRepository @Inject constructor(
         response: okhttp3.ResponseBody,
         onChunkReceived: suspend (String) -> Unit
     ) {
-        response.byteStream().bufferedReader().use { reader ->
-            val buffer = JsonBuffer()
-            val charBuffer = CharArray(BUFFER_SIZE)
-
+        response.source().use { source ->
             while (true) {
-                val charsRead = reader.read(charBuffer)
-                if (charsRead == -1) break
-
-                buffer.append(charBuffer, charsRead)
-                buffer.processCompleteJsonObjects(onChunkReceived)
-            }
-
-            buffer.processRemainingData(onChunkReceived)
-        }
-    }
-
-    private inner class JsonBuffer {
-        private val buffer = StringBuilder()
-
-        fun append(chars: CharArray, length: Int) {
-            buffer.append(chars, 0, length)
-        }
-
-        suspend fun processCompleteJsonObjects(onChunkParsed: suspend (String) -> Unit) {
-            val processedLength = extractAndParseJsonObjects(buffer.toString(), onChunkParsed)
-            if (processedLength > 0) {
-                buffer.delete(0, processedLength)
-            }
-        }
-
-        suspend fun processRemainingData(onChunkParsed: suspend (String) -> Unit) {
-            if (buffer.isNotEmpty()) {
-                extractAndParseJsonObjects(buffer.toString(), onChunkParsed)
-                buffer.clear()
-            }
-        }
-
-        private suspend fun extractAndParseJsonObjects(
-            data: String,
-            onChunkParsed: suspend (String) -> Unit
-        ): Int {
-            var currentIndex = 0
-            var lastProcessedIndex = 0
-
-            while (currentIndex < data.length) {
-                val jsonRange = findCompleteJsonObject(data, currentIndex) ?: break
-
-                val jsonString = data.substring(jsonRange.first, jsonRange.second + 1)
-                parseAndEmitChunk(jsonString, onChunkParsed)
-
-                lastProcessedIndex = jsonRange.second + 1
-                currentIndex = lastProcessedIndex
-            }
-
-            return lastProcessedIndex
-        }
-
-        private fun findCompleteJsonObject(data: String, startFrom: Int): Pair<Int, Int>? {
-            val openBrace = data.indexOf('{', startFrom)
-            if (openBrace == -1) return null
-
-            val closeBrace = data.indexOf('}', openBrace)
-            if (closeBrace == -1) return null
-
-            return Pair(openBrace, closeBrace)
-        }
-
-        private suspend fun parseAndEmitChunk(
-            jsonString: String,
-            onChunkParsed: suspend (String) -> Unit
-        ) {
-            try {
-                extractChunkFromJson(jsonString)?.let { chunk ->
-                    Log.d(TAG, "✅ Parsed: $chunk")
-                    onChunkParsed(chunk)
+                val line = source.readUtf8Line() ?: break
+                if (line.startsWith("data:")) {
+                    val jsonString = line.substringAfter("data:").trim()
+                    if (jsonString.isNotEmpty()) {
+                        try {
+                            val json = JSONObject(jsonString)
+                            val chunk = json.getString(CHUNK_KEY)
+                            Log.d(TAG, "✅ Parsed: $chunk")
+                            onChunkReceived(chunk)
+                        } catch (e: JSONException) {
+                            Log.w(TAG, "Invalid JSON: $jsonString", e)
+                        }
+                    }
                 }
-            } catch (e: JSONException) {
-                Log.w(TAG, "Invalid JSON: $jsonString", e)
-            }
-        }
-
-        private fun extractChunkFromJson(jsonString: String): String? {
-            return try {
-                val chunkValue = JSONObject(jsonString).optString(CHUNK_KEY, "")
-                chunkValue.takeIf { it.isNotEmpty() }
-            } catch (_: JSONException) {
-                null
             }
         }
     }
