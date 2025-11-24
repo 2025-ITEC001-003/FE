@@ -1,6 +1,8 @@
 package com.example.jesafe.data.network
 
 import android.util.Log
+import com.example.jesafe.data.local.ChatDao
+import com.example.jesafe.data.local.ChatEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -10,17 +12,10 @@ import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 채팅 API와의 통신을 담당하는 저장소
- *
- * 스트리밍 기반의 JSON 응답을 실시간으로 파싱하고 전달합니다.
- * 불완전한 JSON 객체를 버퍼링하여 완전한 JSON만 처리합니다.
- *
- * @property apiService 채팅 API 서비스 인터페이스
- */
 @Singleton
 class ChatRepository @Inject constructor(
-    private val apiService: ChatApiService
+    private val apiService: ChatApiService,
+    private val chatDao: ChatDao
 ) {
     companion object {
         private const val TAG = "ChatRepository"
@@ -29,37 +24,49 @@ class ChatRepository @Inject constructor(
         private const val ERROR_MESSAGE = "⚠️ 응답을 받는 중 오류가 발생했습니다."
     }
 
-    /**
-     * 채팅 메시지를 서버로 전송하고 스트리밍 응답을 받습니다.
-     *
-     * 서버로부터 실시간으로 전송되는 JSON 청크를 파싱하여
-     * Flow를 통해 텍스트를 순차적으로 전달합니다.
-     *
-     * @param query 사용자의 질문
-     * @param sessionId 대화 세션 ID
-     * @return 실시간으로 전달되는 응답 텍스트 Flow
-     */
     fun sendChatMessage(query: String, sessionId: String): Flow<String> = flow {
+        // 1. 사용자 메시지를 트랜잭션으로 저장 (세션이 없으면 여기서 생성)
+        val userMessage = ChatEntity(
+            sessionId = sessionId,
+            message = query,
+            isUser = true,
+            timestamp = System.currentTimeMillis()
+        )
+        chatDao.insertMessageAndEnsureSession(userMessage, query)
+
         try {
+            // 2. 서버에 메시지 전송 및 스트리밍 응답 수신
             val response = apiService.sendChatStream(ChatRequest(query, sessionId))
+            var fullResponse = ""
             processStreamingResponse(response) { chunk ->
+                fullResponse += chunk
                 emit(chunk)
             }
+
+            // 3. AI 응답을 트랜잭션으로 저장 (세션이 확실히 존재)
+            val aiMessage = ChatEntity(
+                sessionId = sessionId,
+                message = fullResponse,
+                isUser = false,
+                timestamp = System.currentTimeMillis()
+            )
+            // AI 메시지 저장 시에는 제목을 생성할 필요가 없으므로, 기존 세션 제목을 그대로 사용합니다.
+            chatDao.insertMessage(aiMessage)
+
         } catch (e: Exception) {
             Log.e(TAG, "Stream error", e)
             emit(ERROR_MESSAGE)
         }
     }.flowOn(Dispatchers.IO)
 
-    /**
-     * 스트리밍 응답을 처리하여 완전한 JSON 객체를 추출합니다.
-     *
-     * 버퍼를 사용하여 불완전한 JSON을 보관하고,
-     * 완전한 JSON 객체가 수신되면 파싱하여 전달합니다.
-     *
-     * @param response 스트리밍 응답 본문
-     * @param onChunkReceived 청크 수신 시 호출되는 콜백
-     */
+    suspend fun getAllSessions() = chatDao.getAllSessions()
+
+    suspend fun deleteSession(sessionId: String) {
+        chatDao.deleteSession(sessionId)
+    }
+
+    suspend fun getMessagesForSession(sessionId: String) = chatDao.getMessagesForSession(sessionId)
+
     private suspend fun processStreamingResponse(
         response: okhttp3.ResponseBody,
         onChunkReceived: suspend (String) -> Unit
@@ -80,12 +87,6 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    /**
-     * JSON 버퍼를 관리하는 내부 클래스
-     *
-     * 스트리밍으로 수신되는 불완전한 JSON 데이터를 버퍼링하고,
-     * 완전한 JSON 객체만 추출하여 처리합니다.
-     */
     private inner class JsonBuffer {
         private val buffer = StringBuilder()
 
@@ -107,16 +108,6 @@ class ChatRepository @Inject constructor(
             }
         }
 
-        /**
-         * 문자열에서 완전한 JSON 객체들을 추출하고 파싱합니다.
-         *
-         * 여러 개의 JSON 객체가 연속으로 있을 수 있으므로
-         * 모든 완전한 JSON을 찾아 처리합니다.
-         *
-         * @param data 파싱할 문자열
-         * @param onChunkParsed 청크 파싱 완료 시 호출되는 콜백
-         * @return 처리된 문자열의 마지막 인덱스
-         */
         private suspend fun extractAndParseJsonObjects(
             data: String,
             onChunkParsed: suspend (String) -> Unit
@@ -137,15 +128,6 @@ class ChatRepository @Inject constructor(
             return lastProcessedIndex
         }
 
-        /**
-         * 완전한 JSON 객체의 범위를 찾습니다.
-         *
-         * 중괄호 쌍을 찾아 JSON 객체의 시작과 끝 위치를 반환합니다.
-         *
-         * @param data 검색할 문자열
-         * @param startFrom 검색 시작 위치
-         * @return JSON 객체의 (시작 인덱스, 끝 인덱스) 쌍, 찾지 못하면 null
-         */
         private fun findCompleteJsonObject(data: String, startFrom: Int): Pair<Int, Int>? {
             val openBrace = data.indexOf('{', startFrom)
             if (openBrace == -1) return null
@@ -156,12 +138,6 @@ class ChatRepository @Inject constructor(
             return Pair(openBrace, closeBrace)
         }
 
-        /**
-         * JSON 문자열을 파싱하고 chunk 값을 추출하여 전달합니다.
-         *
-         * @param jsonString 파싱할 JSON 문자열
-         * @param onChunkParsed 청크 추출 시 호출되는 콜백
-         */
         private suspend fun parseAndEmitChunk(
             jsonString: String,
             onChunkParsed: suspend (String) -> Unit
@@ -176,12 +152,6 @@ class ChatRepository @Inject constructor(
             }
         }
 
-        /**
-         * JSON 객체에서 chunk 필드 값을 추출합니다.
-         *
-         * @param jsonString 파싱할 JSON 문자열
-         * @return chunk 필드 값, 없거나 오류 시 null
-         */
         private fun extractChunkFromJson(jsonString: String): String? {
             return try {
                 val chunkValue = JSONObject(jsonString).optString(CHUNK_KEY, "")
@@ -192,11 +162,6 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    /**
-     * 서버 헬스 체크를 수행합니다.
-     *
-     * @return 성공 시 응답 문자열을 담은 Result, 실패 시 예외를 담은 Result
-     */
     suspend fun checkHealth(): Result<String> {
         return try {
             val response = apiService.healthCheck()

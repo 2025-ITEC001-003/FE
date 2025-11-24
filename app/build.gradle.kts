@@ -75,7 +75,8 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3) // 아이콘 라이브러리 추가
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended) // 아이콘 라이브러리 추가
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

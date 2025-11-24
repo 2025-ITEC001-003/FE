@@ -52,12 +52,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.jesafe.R
 import com.example.jesafe.data.local.AccidentDao
 import com.example.jesafe.data.local.AccidentEntity
 import com.example.jesafe.data.local.GridCell
 import com.example.jesafe.data.repository.AccidentRepository
 import com.example.jesafe.ui.auth.LoginViewModel
+import com.example.jesafe.ui.chatbot.AiChatScreen
+import com.example.jesafe.ui.chatbot.ChatDetailScreen
 import com.example.jesafe.ui.map.MapConstants
 import com.example.jesafe.ui.map.MapScreen
 import com.example.jesafe.ui.map.MapViewModel
@@ -133,9 +136,21 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                 val mapViewModel: MapViewModel = hiltViewModel()
                 HomeScreen(mapViewModel = mapViewModel)
             }
+
             composable(BottomNavItem.AiChat.route) {
-                AiChatScreen()
+                // ★ 여기 수정: rootNavController → navController
+                AiChatScreen(navController = navController)
             }
+
+            // ★ 새로 추가: 채팅 상세 화면 라우트
+            composable(
+                route = "chatDetail/{sessionId}",
+                arguments = listOf(navArgument("sessionId") { nullable = true })
+            ) { backStackEntry ->
+                val sessionId = backStackEntry.arguments?.getString("sessionId")
+                ChatDetailScreen(sessionId = sessionId)
+            }
+
             composable(BottomNavItem.MyInfo.route) {
                 MyInfoScreen(rootNavController = rootNavController, loginViewModel = loginViewModel)
             }

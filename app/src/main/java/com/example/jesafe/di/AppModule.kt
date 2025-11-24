@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.jesafe.data.local.AccidentDao
 import com.example.jesafe.data.local.AppDatabase
+import com.example.jesafe.data.local.ChatDao
 import com.example.jesafe.data.repository.AccidentRepository
 import dagger.Module
 import dagger.Provides
@@ -35,7 +36,7 @@ object AppModule {
         Room.databaseBuilder(
             context,
             AppDatabase::class.java,
-            "accident_db"
+            "jesafe_db"
         ).fallbackToDestructiveMigration(dropAllTables = true).build()
 
     /**
@@ -46,6 +47,9 @@ object AppModule {
      */
     @Provides
     fun provideAccidentDao(db: AppDatabase): AccidentDao = db.accidentDao()
+
+    @Provides
+    fun provideChatDao(db: AppDatabase): ChatDao = db.chatDao()
 
     /**
      * 사고 데이터 저장소를 제공합니다.

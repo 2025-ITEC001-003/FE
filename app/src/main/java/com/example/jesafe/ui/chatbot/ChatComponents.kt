@@ -1,4 +1,4 @@
-package com.example.jesafe.ui.main
+package com.example.jesafe.ui.chatbot
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -13,18 +13,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -32,9 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,16 +43,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,29 +57,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.jesafe.R
 import com.example.jesafe.ui.theme.DeepBlue
-import com.example.jesafe.ui.theme.JeSafeTheme
-import com.example.jesafe.ui.theme.LightGrey
 import com.example.jesafe.ui.theme.NavyBlue
-import com.example.jesafe.ui.theme.OffWhite
 import com.example.jesafe.ui.theme.SoftBlue
 import kotlinx.coroutines.launch
 
@@ -109,274 +86,6 @@ private object AiChatScreenDefaults {
     val BounceHeight = 4.dp
 }
 
-/**
- * 채팅 메시지를 나타내는 데이터 클래스
- *
- * @property id 메시지 고유 식별자
- * @property text 메시지 내용
- * @property isUser 사용자가 보낸 메시지 여부 (true: 사용자, false: AI)
- * @property timestamp 메시지 전송 시간
- */
-data class Message(val id: Long, val text: String, val isUser: Boolean, val timestamp: String)
-
-/**
- * AI 채팅 화면 메인 컴포저블
- *
- * 사용자와 AI 간의 대화를 표시하고 관리합니다.
- * 메시지가 없을 때는 추천 질문을 표시하고, 메시지가 있을 때는 대화 목록을 표시합니다.
- * 화면의 빈 공간을 터치하면 키보드가 내려가는 기능을 포함합니다.
- *
- * @param viewModel AI 채팅 뷰모델 (Hilt를 통해 자동 주입)
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AiChatScreen(
-    viewModel: AiChatViewModel = hiltViewModel()
-) {
-    val messages by viewModel.messages.collectAsState()
-    var text by remember { mutableStateOf("") }
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
-
-    fun sendMessage() {
-        if (text.isNotBlank()) {
-            viewModel.sendMessage(text)
-            text = ""
-            focusManager.clearFocus() // 키보드 내리기
-            coroutineScope.launch {
-                listState.animateScrollToItem(0)
-            }
-        }
-    }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    Scaffold(
-        modifier = Modifier.pointerInput(Unit) {
-            detectTapGestures(onTap = {
-                focusManager.clearFocus()
-            })
-        },
-        containerColor = OffWhite,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.ai_safe_helper),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = NavyBlue
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        },
-        bottomBar = {
-            ChatInputField(
-                text = text,
-                onTextChange = { text = it },
-                onSendMessage = { sendMessage() }
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(OffWhite)
-                .padding(innerPadding)
-        ) {
-            SubtleBackgroundPattern()
-
-            if (messages.isEmpty()) {
-                EmptyStateContent(
-                    onSuggestionClick = { suggestion ->
-                        text = suggestion
-                        sendMessage()
-                    }
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    reverseLayout = true
-                ) {
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
-                    items(messages.reversed(), key = { it.id }) { message ->
-                        MessageBubble(
-                            message = message,
-                            snackbarHostState = snackbarHostState
-                        )
-                    }
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
-                }
-            }
-        }
-    }
-}
-
-/**
- * 미세한 점(Dot) 패턴 배경
- *
- * Canvas를 사용하여 매우 옅은 점 패턴을 그립니다.
- * 배경을 밋밋하지 않게 만들어주는 디테일 요소입니다.
- */
-@Composable
-fun SubtleBackgroundPattern() {
-    val density = LocalDensity.current
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val dotRadius = with(density) { 1.dp.toPx() }
-        val spacing = with(density) { 20.dp.toPx() }
-        val dotColor = LightGrey.copy(alpha = 0.1f)
-
-        var y = 0f
-        while (y < size.height) {
-            var x = 0f
-            while (x < size.width) {
-                drawCircle(
-                    color = dotColor,
-                    radius = dotRadius,
-                    center = Offset(x, y)
-                )
-                x += spacing
-            }
-            y += spacing
-        }
-    }
-}
-
-/**
- * 메시지가 없을 때 표시되는 초기 화면
- *
- * AI 아이콘, 환영 메시지, 추천 질문 카드를 표시합니다.
- *
- * @param onSuggestionClick 추천 질문 클릭 시 호출되는 콜백
- */
-@Composable
-fun EmptyStateContent(onSuggestionClick: (String) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(Color(0xFF2CA0F3).copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_robot),
-                contentDescription = stringResource(R.string.ai),
-                tint = Color(0xFF2CA0F3),
-                modifier = Modifier.size(48.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = stringResource(R.string.welcome_message),
-            style = MaterialTheme.typography.headlineSmall,
-            color = Color.Black
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = stringResource(R.string.ask_safety_questions),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = stringResource(R.string.suggested_questions),
-            style = MaterialTheme.typography.titleSmall,
-            color = Color.Gray,
-            modifier = Modifier.align(Alignment.Start)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        val suggestions = listOf(
-            stringResource(R.string.suggestion1),
-            stringResource(R.string.suggestion2),
-            stringResource(R.string.suggestion3),
-            stringResource(R.string.suggestion4)
-        )
-
-        suggestions.forEach { suggestion ->
-            SuggestionCard(
-                text = suggestion,
-                onClick = { onSuggestionClick(suggestion) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-}
-
-/**
- * 추천 질문 카드 컴포저블
- *
- * 클릭 가능한 질문 카드를 표시합니다.
- *
- * @param text 표시할 질문 텍스트
- * @param onClick 카드 클릭 시 호출되는 콜백
- */
-@Composable
-fun SuggestionCard(text: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F5F5)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_chat),
-                contentDescription = null,
-                tint = Color(0xFF2CA0F3),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black
-            )
-        }
-    }
-}
-
-/**
- * 메시지 버블 컴포저블
- *
- * 사용자 또는 AI의 메시지를 말풍선 형태로 표시합니다.
- * AI 응답 대기 중에는 타이핑 애니메이션을 표시합니다.
- * 길게 누르면 복사, 공유, 삭제 옵션이 있는 컨텍스트 메뉴가 나타납니다.
- *
- * @param message 표시할 메시지 객체
- * @param snackbarHostState 스낵바 표시를 위한 HostState
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
@@ -502,13 +211,6 @@ fun MessageBubble(
     }
 }
 
-/**
- * AI 응답 대기 중 표시되는 타이핑 애니메이션입니다.
- * 세 개의 점이 순차적으로 위아래로 움직이는 효과를 통해
- * 사용자에게 AI가 응답을 생성하고 있음을 시각적으로 전달합니다.
- *
- * @param modifier Modifier
- */
 @Composable
 fun TypingIndicator(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "typing_indicator_transition")
@@ -552,17 +254,6 @@ fun TypingIndicator(modifier: Modifier = Modifier) {
 }
 
 
-/**
- * 메시지 컨텍스트 메뉴
- *
- * 메시지를 길게 눌렀을 때 표시되는 드롭다운 메뉴입니다.
- * 복사, 공유, 삭제 액션을 제공합니다.
- *
- * @param expanded 메뉴 표시 여부
- * @param onDismiss 메뉴 닫기 콜백
- * @param message 대상 메시지
- * @param actions 메시지 액션 콜백 모음
- */
 @Composable
 private fun MessageContextMenu(
     expanded: Boolean,
@@ -624,16 +315,6 @@ private fun MessageContextMenu(
     }
 }
 
-/**
- * 메뉴 아이템 컴포넌트
- *
- * ImageVector 아이콘을 사용하는 드롭다운 메뉴 아이템입니다.
- *
- * @param icon 표시할 아이콘 (ImageVector)
- * @param text 메뉴 아이템 텍스트
- * @param iconTint 아이콘 색상 (기본값: 파란색)
- * @param onClick 클릭 시 호출되는 콜백
- */
 @Composable
 private fun MenuAction(
     icon: ImageVector,
@@ -664,41 +345,18 @@ private fun MenuAction(
     )
 }
 
-/**
- * 메시지 액션을 담는 데이터 클래스
- *
- * 메시지에 대한 사용자 액션(복사, 공유, 삭제)의 콜백을 포함합니다.
- *
- * @property onCopy 메시지 복사 액션
- * @property onShare 메시지 공유 액션
- * @property onDelete 메시지 삭제 액션
- */
 private data class MessageActions(
     val onCopy: (String) -> Unit,
     val onShare: (String) -> Unit,
     val onDelete: () -> Unit
 )
 
-/**
- * 클립보드에 텍스트를 복사합니다.
- *
- * @param context Android 컨텍스트
- * @param text 복사할 텍스트
- */
 private fun copyToClipboard(context: Context, text: String) {
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("message", text)
     clipboardManager.setPrimaryClip(clip)
 }
 
-/**
- * 텍스트를 다른 앱과 공유합니다.
- *
- * Android 공유 시트를 통해 텍스트를 공유할 수 있는 앱 목록을 표시합니다.
- *
- * @param context Android 컨텍스트
- * @param text 공유할 텍스트
- */
 private fun shareText(context: Context, text: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -707,13 +365,6 @@ private fun shareText(context: Context, text: String) {
     context.startActivity(Intent.createChooser(intent, context.getString(R.string.share)))
 }
 
-/**
- * 햅틱 피드백을 실행합니다.
- *
- * Android R(API 30) 이상에서는 CONFIRM, 그 이전 버전에서는 LONG_PRESS 피드백을 사용합니다.
- *
- * @param view 햅틱 피드백을 수행할 뷰
- */
 private fun performHapticFeedback(view: android.view.View) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -722,27 +373,10 @@ private fun performHapticFeedback(view: android.view.View) {
     }
 }
 
-/**
- * 토스트 메시지를 표시합니다.
- *
- * @param context Android 컨텍스트
- * @param message 표시할 메시지
- */
 private fun showToast(context: Context, message: String) {
     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
 
-/**
- * 채팅 입력 필드 컴포저블
- *
- * 하단에 고정되는 메시지 입력 필드입니다.
- * AI 아이콘, 텍스트 입력 필드, 전송/마이크 버튼으로 구성됩니다.
- * 텍스트가 입력되면 마이크 아이콘이 전송 버튼으로 변경됩니다.
- *
- * @param text 현재 입력된 텍스트
- * @param onTextChange 텍스트 변경 시 호출되는 콜백
- * @param onSendMessage 메시지 전송 시 호출되는 콜백
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatInputField(
@@ -816,16 +450,5 @@ fun ChatInputField(
                 }
             }
         }
-    }
-}
-
-/**
- * AI 채팅 화면 미리보기
- */
-@Preview(showBackground = true)
-@Composable
-fun AiChatScreenPreview() {
-    JeSafeTheme {
-        AiChatScreen()
     }
 }
