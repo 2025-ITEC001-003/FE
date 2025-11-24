@@ -100,7 +100,10 @@ fun AiChatScreen(
                         stickyHeader {
                             DateHeader(date)
                         }
-                        items(sessionsInGroup) { session ->
+                        items(
+                            items = sessionsInGroup,
+                            key = { it.id }
+                        ) { session ->
                             SessionItem(
                                 session = session,
                                 onClick = { navController.navigate("chatDetail/${session.id}") },
