@@ -56,10 +56,18 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideStreamingOkHttpClient(): OkHttpClient {
+        val streamingLoggingInterceptor = HttpLoggingInterceptor().apply {
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.HEADERS
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+        }
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MINUTES) // 스트리밍을 위해 타임아웃 제거
             .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(streamingLoggingInterceptor)
             .build()
     }
 
@@ -67,7 +75,8 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(@DefaultOkHttpClient okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8000/")
+//            .baseUrl("http://10.0.2.2:8000/")
+            .baseUrl("http://3.37.68.172:8000/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create()))
             .build()
@@ -83,7 +92,8 @@ object NetworkModule {
     @Singleton
     fun provideChatApiService(@StreamingOkHttpClient streamingOkHttpClient: OkHttpClient): ChatApiService {
         val streamingRetrofit = Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8000/")
+//            .baseUrl("http://10.0.2.2:8000/")
+            .baseUrl("http://3.37.68.172:8000/")
             .client(streamingOkHttpClient)
             .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create()))
             .build()
