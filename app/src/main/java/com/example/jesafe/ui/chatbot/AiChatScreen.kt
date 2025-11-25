@@ -121,13 +121,23 @@ fun AiChatScreen(
                 EmptyChatState(onNewChatClick = { navController.navigate("chatDetail/new") })
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    groupedSessions.forEach { (date, sessionsInGroup) ->
+                    groupedSessions.entries.forEachIndexed { index, (date, sessionsInGroup) ->
+
+                        // 날짜 섹션마다 위쪽 여백 추가
                         stickyHeader {
-                            DateHeader(date)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.White)
+                            ) {
+                                // 첫 섹션은 살짝, 그 다음 섹션부터는 좀 더 넓게
+                                Spacer(modifier = Modifier.height(if (index == 0) 8.dp else 16.dp))
+                                DateHeader(date)
+                            }
                         }
+
                         items(
                             items = sessionsInGroup,
                             key = { it.session.id }
@@ -186,15 +196,50 @@ fun DeleteConfirmationDialog(
  */
 @Composable
 fun DateHeader(date: String) {
-    Text(
-        text = date,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-    )
+            .background(Color.White) // 스크롤해도 깔끔하게
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // 왼쪽 라인
+            Divider(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // 가운데 알약 모양 날짜 배지
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(999.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // 오른쪽 라인
+            Divider(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+        }
+    }
 }
 
 /**
