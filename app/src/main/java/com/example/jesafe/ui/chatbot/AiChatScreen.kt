@@ -5,7 +5,6 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,11 +22,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
@@ -35,13 +34,13 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,14 +66,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.jesafe.R
 import com.example.jesafe.data.local.ChatSessionWithPreview
+import com.example.jesafe.ui.theme.OffWhite
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
-import androidx.compose.foundation.indication
 import androidx.compose.foundation.LocalIndication
-import com.example.jesafe.ui.theme.OffWhite
+import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.foundation.indication
+import com.example.jesafe.ui.theme.SoftBlue
 
 // -----------------------------
 // 세션 리스트 UI 관련 상수
@@ -127,16 +127,13 @@ fun AiChatScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("chatDetail/new") },
-                containerColor = Color.Transparent,   // FAB 자체 배경 제거
                 shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+                containerColor = SoftBlue
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_add_button),
+                Icon(
+                    imageVector = Icons.Default.Add,
                     contentDescription = "New Chat",
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)     // PNG의 네모 부분 강제 마스킹
+                    tint = Color.White
                 )
             }
         }
@@ -144,15 +141,13 @@ fun AiChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
         ) {
             if (sessions.isEmpty()) {
                 EmptyChatState(onNewChatClick = { navController.navigate("chatDetail/new") })
             } else {
-                // 🔹 상단/하단 여백 제거: contentPadding 0
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = innerPadding // <-- 여기에 전달
                 ) {
                     groupedSessions.entries.forEachIndexed { index, (date, sessionsInGroup) ->
 
@@ -162,7 +157,6 @@ fun AiChatScreen(
                                     .fillMaxWidth()
                                     .background(Color.White)
                             ) {
-                                // 🔹 첫 섹션은 위쪽 여백 제거, 이후 섹션만 살짝 띄우기
                                 if (index != 0) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -188,6 +182,7 @@ fun AiChatScreen(
                     }
                 }
             }
+
         }
     }
 }

@@ -50,7 +50,6 @@ android {
             )
             buildConfigField("String", "SERVER_URL", "http://3.37.68.172:8000/")
         }
-
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
