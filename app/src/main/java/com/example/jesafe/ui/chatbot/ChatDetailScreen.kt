@@ -109,7 +109,6 @@ fun ChatDetailScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        // 🔥 bottomBar 제거! (Box 안으로 이동)
     ) { innerPadding ->
         Box(
             modifier = Modifier
