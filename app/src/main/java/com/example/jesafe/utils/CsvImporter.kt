@@ -10,8 +10,9 @@ import java.io.InputStreamReader
 
 object CsvImporter {
 
-    suspend fun importIfEmpty(context: Context, db: AppDatabase) = withContext(Dispatchers.IO) {
-        if (db.accidentDao().getAll().isNotEmpty()) return@withContext
+    suspend fun importFromCsv(context: Context, db: AppDatabase) = withContext(Dispatchers.IO) {
+        // 기존 데이터 삭제 (개발 중 데이터 갱신용)
+        db.accidentDao().deleteAll()
 
         val inputStream = context.assets.open("jeju_accidents.csv")
         val reader = BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8))
