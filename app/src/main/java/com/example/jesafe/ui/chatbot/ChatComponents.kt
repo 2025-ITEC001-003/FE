@@ -98,12 +98,12 @@ private object AiChatScreenDefaults {
     val MessageTextLineHeight = 20.sp
 
     // ChatInputField
-    val InputFieldPadding = 24.dp
+    val InputFieldPadding = 12.dp
     val InputFieldShadowElevation = 8.dp
     val InputFieldCornerRadius = 24.dp
     val InputFieldRowPadding = 8.dp
     val InputFieldIconContainerSize = 40.dp
-    val InputFieldIconSize = 24.dp
+    val InputFieldIconSize = 20.dp
     val InputFieldSpacerWidth = 8.dp
 
     // ContextMenu
@@ -114,12 +114,12 @@ private object AiChatScreenDefaults {
 }
 
 /**
- * Displays a single chat message bubble.
- * It adapts its appearance based on whether the message is from the user or the AI.
- * When the AI message is empty (i.e., streaming is about to start), it shows a typing indicator.
+ * 단일 채팅 메시지 버블을 표시합니다.
+ * 메시지가 사용자의 것인지 AI의 것인지에 따라 모양이 바뀝니다.
+ * AI 메시지가 비어 있으면(스트리밍 시작을 나타냄) 입력 중 표시기를 보여줍니다.
  *
- * @param message The message to display.
- * @param snackbarHostState The [SnackbarHostState] to show notifications (e.g., "Copied to clipboard").
+ * @param message 표시할 메시지 객체입니다.
+ * @param snackbarHostState "클립보드에 복사됨"과 같은 알림을 표시하는 데 사용되는 [SnackbarHostState]입니다.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -249,7 +249,11 @@ fun MessageBubble(
 }
 
 /**
- * An animated typing indicator used in [MessageBubble].
+ * [MessageBubble]에서 사용되는 애니메이션 입력 중 표시기입니다.
+ * AI가 "입력 중"임을 나타내는 시각적 신호를 생성하는 세 개의 통통 튀는 점으로 구성됩니다.
+ * 애니메이션은 계속 반복됩니다.
+ *
+ * @param modifier 표시기에 적용할 [Modifier]입니다.
  */
 @Composable
 fun TypingIndicator(modifier: Modifier = Modifier) {
@@ -292,7 +296,15 @@ fun TypingIndicator(modifier: Modifier = Modifier) {
     }
 }
 
-
+/**
+ * 주어진 채팅 메시지에 대한 컨텍스트 메뉴를 표시합니다.
+ * 메뉴는 메시지 복사, 공유, 삭제와 같은 옵션을 제공합니다.
+ *
+ * @param expanded 메뉴가 현재 표시되는지 여부입니다.
+ * @param onDismiss 메뉴가 닫힐 때 실행되는 콜백입니다.
+ * @param message 메뉴와 관련된 [Message] 객체입니다.
+ * @param actions 각 메뉴 항목에 대한 로직을 포함하는 [MessageActions]입니다.
+ */
 @Composable
 private fun MessageContextMenu(
     expanded: Boolean,
@@ -354,6 +366,14 @@ private fun MessageContextMenu(
     }
 }
 
+/**
+ * [MessageContextMenu]의 표준 항목을 만들기 위한 헬퍼 컴포저블입니다.
+ *
+ * @param icon 작업에 대해 표시할 아이콘입니다.
+ * @param text 작업에 대한 텍스트 레이블입니다.
+ * @param iconTint 아이콘의 틴트 색상입니다.
+ * @param onClick 이 메뉴 항목을 클릭할 때 호출될 콜백입니다.
+ */
 @Composable
 private fun MenuAction(
     icon: ImageVector,
@@ -384,18 +404,37 @@ private fun MenuAction(
     )
 }
 
+/**
+ * 메시지에 대해 수행할 수 있는 작업의 콜백을 보유하는 데이터 클래스입니다.
+ *
+ * @param onCopy 복사 버튼을 클릭했을 때 수행할 작업입니다. 메시지 텍스트를 받습니다.
+ * @param onShare 공유 버튼을 클릭했을 때 수행할 작업입니다. 메시지 텍스트를 받습니다.
+ * @param onDelete 삭제 버튼을 클릭했을 때 수행할 작업입니다.
+ */
 private data class MessageActions(
     val onCopy: (String) -> Unit,
     val onShare: (String) -> Unit,
     val onDelete: () -> Unit
 )
 
+/**
+ * 주어진 텍스트를 시스템 클립보드에 복사합니다.
+ *
+ * @param context Android [Context]입니다.
+ * @param text 복사할 텍스트입니다.
+ */
 private fun copyToClipboard(context: Context, text: String) {
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("message", text)
     clipboardManager.setPrimaryClip(clip)
 }
 
+/**
+ * 주어진 텍스트를 공유하기 위해 시스템의 공유 시트를 엽니다.
+ *
+ * @param context Android [Context]입니다.
+ * @param text 공유할 텍스트입니다.
+ */
 private fun shareText(context: Context, text: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -404,6 +443,11 @@ private fun shareText(context: Context, text: String) {
     context.startActivity(Intent.createChooser(intent, context.getString(R.string.share)))
 }
 
+/**
+ * 햅틱 피드백 이벤트를 트리거합니다.
+ *
+ * @param view 햅틱 피드백을 수행할 [android.view.View]입니다.
+ */
 private fun performHapticFeedback(view: android.view.View) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -412,17 +456,23 @@ private fun performHapticFeedback(view: android.view.View) {
     }
 }
 
+/**
+ * 짧은 시간 동안 Toast 메시지를 표시합니다.
+ *
+ * @param context Android [Context]입니다.
+ * @param message Toast에 표시할 메시지입니다.
+ */
 private fun showToast(context: Context, message: String) {
     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
 
 /**
- * A text input field for composing and sending chat messages.
+ * 채팅 메시지를 작성하고 보내기 위한 텍스트 입력 필드입니다.
  *
- * @param text The current text in the input field.
- * @param onTextChange A callback invoked when the text changes.
- * @param onSendMessage A callback invoked when the send button is clicked or send action is triggered.
- * @param enabled Controls the enabled state of the input field and send button. When false, the field is disabled and the send button is not clickable.
+ * @param text 입력 필드의 현재 텍스트입니다.
+ * @param onTextChange 텍스트가 변경될 때 호출되는 콜백입니다.
+ * @param onSendMessage 보내기 버튼을 클릭하거나 보내기 작업이 트리거될 때 호출되는 콜백입니다.
+ * @param enabled 입력 필드와 보내기 버튼의 활성화 상태를 제어합니다. false일 경우 필드가 비활성화되고 보내기 버튼을 클릭할 수 없습니다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -466,7 +516,7 @@ fun ChatInputField(
                     value = text,
                     onValueChange = onTextChange,
                     modifier = Modifier.weight(1f),
-                    enabled = enabled,
+                    enabled = true,
                     placeholder = { Text(stringResource(R.string.enter_message), color = Color.Gray) },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -474,6 +524,7 @@ fun ChatInputField(
                         disabledContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
                         cursorColor = Color(0xFF2CA0F3)
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -486,7 +537,7 @@ fun ChatInputField(
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
                             contentDescription = stringResource(R.string.send),
-                            tint = Color(0xFF2CA0F3)
+                            tint = if (enabled) Color(0xFF2CA0F3) else Color.Gray
                         )
                     }
                 } else {

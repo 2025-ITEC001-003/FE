@@ -3,6 +3,7 @@ package com.example.jesafe.data.network
 import android.util.Log
 import com.example.jesafe.data.local.ChatDao
 import com.example.jesafe.data.local.ChatEntity
+import com.example.jesafe.data.local.ChatSessionWithPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -24,7 +25,6 @@ class ChatRepository @Inject constructor(
     }
 
     fun sendChatMessage(query: String, sessionId: String): Flow<String> = flow {
-        // 1. 사용자 메시지를 트랜잭션으로 저장 (세션이 없으면 여기서 생성)
         val userMessage = ChatEntity(
             sessionId = sessionId,
             message = query,
@@ -34,7 +34,6 @@ class ChatRepository @Inject constructor(
         chatDao.insertMessageAndEnsureSession(userMessage, query)
 
         try {
-            // 2. 서버에 메시지 전송 및 스트리밍 응답 수신
             val response = apiService.sendChatStream(ChatRequest(query, sessionId))
             var fullResponse = ""
             processStreamingResponse(response) { chunk ->
@@ -42,14 +41,12 @@ class ChatRepository @Inject constructor(
                 emit(chunk)
             }
 
-            // 3. AI 응답을 트랜잭션으로 저장 (세션이 확실히 존재)
             val aiMessage = ChatEntity(
                 sessionId = sessionId,
                 message = fullResponse,
                 isUser = false,
                 timestamp = System.currentTimeMillis()
             )
-            // AI 메시지 저장 시에는 제목을 생성할 필요가 없으므로, 기존 세션 제목을 그대로 사용합니다.
             chatDao.insertMessage(aiMessage)
 
         } catch (e: Exception) {
@@ -58,10 +55,14 @@ class ChatRepository @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
-    suspend fun getAllSessions() = chatDao.getAllSessions()
+    suspend fun getSessionsWithLastMessage(): List<ChatSessionWithPreview> = chatDao.getSessionsWithLastMessage()
 
     suspend fun deleteSession(sessionId: String) {
         chatDao.deleteSession(sessionId)
+    }
+
+    suspend fun deleteMessage(messageId: Long) {
+        chatDao.deleteMessageById(messageId)
     }
 
     suspend fun getMessagesForSession(sessionId: String) = chatDao.getMessagesForSession(sessionId)

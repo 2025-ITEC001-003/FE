@@ -8,8 +8,18 @@ import androidx.room.Transaction
 
 @Dao
 interface ChatDao {
-    @Query("SELECT * FROM chat_sessions ORDER BY lastUpdated DESC")
-    suspend fun getAllSessions(): List<ChatSessionEntity>
+    @Transaction
+    @Query("""
+        SELECT cs.*, (
+            SELECT message FROM chat_messages
+            WHERE sessionId = cs.id
+            ORDER BY timestamp DESC
+            LIMIT 1
+        ) as lastMessage
+        FROM chat_sessions cs
+        ORDER BY cs.lastUpdated DESC
+    """)
+    suspend fun getSessionsWithLastMessage(): List<ChatSessionWithPreview>
 
     @Query("SELECT * FROM chat_sessions WHERE id = :sessionId")
     suspend fun getSessionById(sessionId: String): ChatSessionEntity?
@@ -26,13 +36,14 @@ interface ChatDao {
     @Query("DELETE FROM chat_sessions WHERE id = :sessionId")
     suspend fun deleteSession(sessionId: String)
 
+    @Query("DELETE FROM chat_messages WHERE id = :messageId")
+    suspend fun deleteMessageById(messageId: Long)
+
     @Transaction
     suspend fun insertMessageAndEnsureSession(message: ChatEntity, title: String) {
-        // 세션이 없으면 새로 생성
         if (getSessionById(message.sessionId) == null) {
             insertSession(ChatSessionEntity(id = message.sessionId, title = title, lastUpdated = message.timestamp))
         }
-        // 메시지 저장
         insertMessage(message)
     }
 }

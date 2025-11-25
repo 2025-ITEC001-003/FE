@@ -3,6 +3,9 @@ package com.example.jesafe.ui.main
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -151,10 +154,14 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                 }
                 composable(
                     route = "chatDetail/{sessionId}",
-                    arguments = listOf(navArgument("sessionId") { nullable = true })
+                    arguments = listOf(navArgument("sessionId") { nullable = true }),
+                    enterTransition = { slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(300)) },
+                    exitTransition = { slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(300)) },
+                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -1000 }, animationSpec = tween(300)) },
+                    popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(300)) }
                 ) { backStackEntry ->
                     val sessionId = backStackEntry.arguments?.getString("sessionId")
-                    ChatDetailScreen(sessionId = sessionId)
+                    ChatDetailScreen(sessionId = sessionId, navController = navController)
                 }
             }
 
