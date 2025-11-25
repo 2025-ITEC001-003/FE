@@ -3,13 +3,17 @@ package com.example.jesafe.ui.chatbot
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,19 +24,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -46,8 +49,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -68,6 +72,23 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.LocalIndication
+import com.example.jesafe.ui.theme.OffWhite
+
+// -----------------------------
+// 세션 리스트 UI 관련 상수
+// -----------------------------
+private val SESSION_ITEM_HORIZONTAL_PADDING = 16.dp
+private val SESSION_ITEM_VERTICAL_PADDING = 12.dp
+private val SESSION_ITEM_CORNER_RADIUS = 16.dp
+private val SESSION_ITEM_SELECTED_ELEVATION = 6.dp
+private val SESSION_ITEM_SELECTED_SCALE = 1.02f
+private val SESSION_ITEM_PRESSED_SCALE = 0.97f
+private val SESSION_DIVIDER_START_END_PADDING = 16.dp
+
+private const val SESSION_SCALE_ANIMATION_DURATION = 120
+
 /**
  * AI 채팅 세션 목록을 보여주는 화면 컴포저블.
  *
@@ -79,7 +100,7 @@ import java.util.Locale
  * @param navController 채팅 상세 화면으로 이동하기 위한 NavController
  * @param viewModel 채팅 세션 목록을 제공하는 [AiChatViewModel]
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AiChatScreen(
     navController: NavController,
@@ -106,9 +127,17 @@ fun AiChatScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("chatDetail/new") },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = Color.Transparent,   // FAB 자체 배경 제거
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "New Chat", tint = Color.White)
+                Image(
+                    painter = painterResource(R.drawable.ic_add_button),
+                    contentDescription = "New Chat",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)     // PNG의 네모 부분 강제 마스킹
+                )
             }
         }
     ) { innerPadding ->
@@ -120,28 +149,31 @@ fun AiChatScreen(
             if (sessions.isEmpty()) {
                 EmptyChatState(onNewChatClick = { navController.navigate("chatDetail/new") })
             } else {
+                // 🔹 상단/하단 여백 제거: contentPadding 0
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     groupedSessions.entries.forEachIndexed { index, (date, sessionsInGroup) ->
 
-                        // 날짜 섹션마다 위쪽 여백 추가
                         stickyHeader {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(Color.White)
                             ) {
-                                // 첫 섹션은 살짝, 그 다음 섹션부터는 좀 더 넓게
-                                Spacer(modifier = Modifier.height(if (index == 0) 8.dp else 16.dp))
+                                // 🔹 첫 섹션은 위쪽 여백 제거, 이후 섹션만 살짝 띄우기
+                                if (index != 0) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
                                 DateHeader(date)
                             }
                         }
 
-                        items(
+                        itemsIndexed(
                             items = sessionsInGroup,
-                            key = { it.session.id }
-                        ) { session ->
+                            key = { _, session -> session.session.id }
+                        ) { sessionIndex, session ->
                             SessionItem(
                                 sessionWithLastMessage = session,
                                 onClick = {
@@ -149,7 +181,8 @@ fun AiChatScreen(
                                 },
                                 onDeleteRequest = {
                                     sessionToDelete = session
-                                }
+                                },
+                                isLastInGroup = sessionIndex == sessionsInGroup.lastIndex
                             )
                         }
                     }
@@ -174,8 +207,8 @@ fun DeleteConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("채팅 삭제") },
-        text = { Text("'${session.session.title}' 채팅을 정말로 삭제하시겠습니까?") },
+        title = { R.string.chat_delete_cd },
+        text = { R.string.chat_delete_label },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text("삭제", color = Color.Red)
@@ -185,7 +218,8 @@ fun DeleteConfirmationDialog(
             TextButton(onClick = onDismiss) {
                 Text("취소")
             }
-        }
+        },
+        containerColor = OffWhite
     )
 }
 
@@ -199,8 +233,9 @@ fun DateHeader(date: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White) // 스크롤해도 깔끔하게
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            // 🔹 세로 패딩 최소화로 상/하 여백 느낌 줄이기
+            .padding(horizontal = 16.dp)
+            .background(Color.White)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -217,7 +252,7 @@ fun DateHeader(date: String) {
             // 가운데 알약 모양 날짜 배지
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
                     .background(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
                         shape = RoundedCornerShape(999.dp)
@@ -281,27 +316,59 @@ fun EmptyChatState(onNewChatClick: () -> Unit) {
 fun SessionItem(
     sessionWithLastMessage: ChatSessionWithPreview,
     onClick: () -> Unit,
-    onDeleteRequest: () -> Unit
+    onDeleteRequest: () -> Unit,
+    isLastInGroup: Boolean
 ) {
     val view = LocalView.current
     var isSelected by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    } else {
-        Color.Transparent
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val targetScale = when {
+        isSelected -> SESSION_ITEM_SELECTED_SCALE
+        isPressed -> SESSION_ITEM_PRESSED_SCALE
+        else -> 1f
     }
 
-    val interactionSource = remember { MutableInteractionSource() }
+    val scale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = tween(durationMillis = SESSION_SCALE_ANIMATION_DURATION),
+        label = "session_item_scale"
+    )
+
+    val cardBackgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.onPrimary
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(
+                    start = SESSION_ITEM_HORIZONTAL_PADDING,
+                    end = SESSION_ITEM_HORIZONTAL_PADDING,
+                    top = 6.dp,
+                    bottom = 6.dp
+                )
+                .shadow(
+                    elevation = if (isSelected) SESSION_ITEM_SELECTED_ELEVATION else 0.dp,
+                    shape = RoundedCornerShape(SESSION_ITEM_CORNER_RADIUS)
+                )
+                .clip(RoundedCornerShape(SESSION_ITEM_CORNER_RADIUS))
+                .background(cardBackgroundColor)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                // 🔹 여기서 따로 indication() 안 달고,
+                // combinedClickable 에서 LocalIndication.current 사용
                 .combinedClickable(
                     interactionSource = interactionSource,
-                    indication = null, // No visual ripple, selection is shown by bg color
+                    indication = LocalIndication.current,
                     onClick = {
                         isSelected = false
                         showMenu = false
@@ -313,12 +380,14 @@ fun SessionItem(
                         performHapticFeedback(view)
                     }
                 )
-                .background(backgroundColor) // Highlight for selection
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(
+                        horizontal = SESSION_ITEM_HORIZONTAL_PADDING,
+                        vertical = SESSION_ITEM_VERTICAL_PADDING
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
@@ -373,11 +442,14 @@ fun SessionItem(
             )
         }
 
-        Divider(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-        )
+        // 🔹 그룹의 마지막 아이템이 아닐 때만 구분선 표시
+        if (!isLastInGroup) {
+            Divider(
+                modifier = Modifier.padding(horizontal = SESSION_DIVIDER_START_END_PADDING),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+        }
     }
 }
 

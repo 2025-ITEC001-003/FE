@@ -1,3 +1,4 @@
+
 package com.example.jesafe.ui.main
 
 import android.Manifest
@@ -6,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,13 +18,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +38,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,11 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.jesafe.R
@@ -78,7 +84,6 @@ import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import androidx.navigation.navigation
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
@@ -86,20 +91,31 @@ sealed class BottomNavItem(val route: String, val resourceId: Int, val title: St
     object MyInfo : BottomNavItem("my_info", R.drawable.ic_my_info, "내 정보")
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel) {
-    val navController = rememberNavController()
     val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.AiChat, BottomNavItem.MyInfo)
+
+    // PagerState
+    val pagerState = rememberPagerState { bottomNavItems.size }
+    val coroutineScope = rememberCoroutineScope()
+
+    // 🔹 무거운 애들 밖으로 빼두기
+    val mapViewModel: MapViewModel = hiltViewModel()
+    val chatNavController = rememberNavController()
 
     Scaffold(
         bottomBar = {
             NavigationBar(
+                // ✅ 여기 modifier에 shadow 추가
+                modifier = Modifier.shadow(
+                    elevation = 12.dp, // 그림자 높이 (값이 클수록 그림자가 넓고 진해짐)
+                    spotColor = Color.Black, // 그림자 색상 (검은색이 가장 무난)
+                    ambientColor = Color.Black
+                ),
                 containerColor = Color.White
             ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-
-                bottomNavItems.forEach { screen ->
+                bottomNavItems.forEachIndexed { index, screen ->
                     NavigationBarItem(
                         icon = {
                             Icon(
@@ -109,7 +125,7 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                             )
                         },
                         label = { Text(screen.title, fontSize = 11.sp) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        selected = pagerState.currentPage == index,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Color(0xFF2CA0F3),
                             selectedTextColor = Color(0xFF2CA0F3),
@@ -118,19 +134,9 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                             indicatorColor = Color.Transparent
                         ),
                         onClick = {
-                            // 🔥 AI 채팅 탭일 때는 항상 ai_chat_list 로 이동
-                            val targetRoute = if (screen.route == BottomNavItem.AiChat.route) {
-                                "ai_chat_list"
-                            } else {
-                                screen.route
-                            }
-
-                            navController.navigate(targetRoute) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                            coroutineScope.launch {
+                                // 🔹 빠르게 반응하는 느낌: 바로 animateScrollToPage
+                                pagerState.animateScrollToPage(index)
                             }
                         }
                     )
@@ -138,40 +144,51 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Home.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(BottomNavItem.Home.route) {
-                val mapViewModel: MapViewModel = hiltViewModel()
-                HomeScreen(mapViewModel = mapViewModel)
-            }
-
-            navigation(startDestination = "ai_chat_list", route = BottomNavItem.AiChat.route) {
-                composable("ai_chat_list") {
-                    AiChatScreen(navController = navController)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.padding(innerPadding),
+            // ✅ 핵심 변경: 홈 화면(0) 일 때는 Pager의 스와이프를 막아서 지도가 터치를 받게 함
+            userScrollEnabled = pagerState.currentPage != 0
+        ) { page ->
+            when (page) {
+                0 -> {
+                    HomeScreen(mapViewModel = mapViewModel)
                 }
-                composable(
-                    route = "chatDetail/{sessionId}",
-                    arguments = listOf(navArgument("sessionId") { nullable = true }),
-                    enterTransition = { slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(300)) },
-                    exitTransition = { slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(300)) },
-                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -1000 }, animationSpec = tween(300)) },
-                    popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(300)) }
-                ) { backStackEntry ->
-                    val sessionId = backStackEntry.arguments?.getString("sessionId")
-                    ChatDetailScreen(sessionId = sessionId, navController = navController)
+                1 -> {
+                    NavHost(
+                        navController = chatNavController,
+                        startDestination = "ai_chat_list"
+                    ) {
+                        composable("ai_chat_list") {
+                            AiChatScreen(navController = chatNavController)
+                        }
+                        composable(
+                            route = "chatDetail/{sessionId}",
+                            arguments = listOf(navArgument("sessionId") { nullable = true }),
+                            enterTransition = { slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(300)) },
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(300)) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -1000 }, animationSpec = tween(300)) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(300)) }
+                        ) { backStackEntry ->
+                            val sessionId = backStackEntry.arguments?.getString("sessionId")
+                            ChatDetailScreen(sessionId = sessionId, navController = chatNavController)
+                        }
+                    }
                 }
-            }
-
-            composable(BottomNavItem.MyInfo.route) {
-                MyInfoScreen(rootNavController = rootNavController, loginViewModel = loginViewModel)
+                2 -> {
+                    MyInfoScreen(
+                        rootNavController = rootNavController,
+                        loginViewModel = loginViewModel
+                    )
+                }
             }
         }
     }
 }
 
+
+
+@OptIn(ExperimentalMaterial3Api::class) // BottomSheetScaffold 사용을 위해 필요
 @Composable
 fun HomeScreen(mapViewModel: MapViewModel) {
     var showWarning by remember { mutableStateOf(true) }
@@ -182,16 +199,112 @@ fun HomeScreen(mapViewModel: MapViewModel) {
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MapScreen(
-            viewModel = mapViewModel,
-            cameraPositionState = cameraPositionState
-        )
-        TopContent(showWarning = showWarning, onDismissWarning = { showWarning = false })
-        MapControlButtons(cameraPositionState = cameraPositionState)
-        BottomInfoSheet()
+    // BottomSheet 상태 관리 (필요 시 sheetState로 프로그램적 제어 가능)
+    val scaffoldState = rememberBottomSheetScaffoldState()
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = 100.dp, // 처음에 보이는 높이 (사진의 요약 정보 높이만큼 설정)
+        sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        sheetContainerColor = Color.White,
+        sheetContent = {
+            // ✅ 여기에 드래그 가능한 하단 정보 UI 배치
+            BottomInfoContent()
+        },
+        containerColor = Color.Transparent // 지도가 배경이므로 투명
+    ) { paddingValues ->
+        // ✅ 메인 컨텐츠 (지도 + 상단 버튼들)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues) // BottomSheet 공간만큼 패딩 처리 (원치 않으면 제거 가능)
+        ) {
+            // 1. 지도 (가장 뒤)
+            MapScreen(
+                viewModel = mapViewModel,
+                cameraPositionState = cameraPositionState
+            )
+
+            // 2. 상단 경고 및 정보 (지도 위)
+            TopContent(showWarning = showWarning, onDismissWarning = { showWarning = false })
+
+            // 3. 우측 하단 컨트롤 버튼 (지도 위)
+            MapControlButtons(cameraPositionState = cameraPositionState)
+        }
     }
 }
+
+// 기존 BottomInfoSheet 내용을 분리하여 재사용하기 쉽게 만듦
+@Composable
+fun BottomInfoContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .heightIn(min = 20.dp, max = 500.dp) // 최소/최대 높이 설정 가능
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Text(
+                "현재 위치 안전도",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))
+            ) {
+                Text(
+                    "안전",
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        Row(
+            horizontalArrangement = Arrangement.SpaceAround,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            InfoColumn(value = "92", label = "안전지수", color = Color(0xFF2CA0F3))
+            InfoColumn(value = "3", label = "근처 위험", color = Color.Gray)
+            InfoColumn(value = "27", label = "온도", color = Color.Gray)
+        }
+        Spacer(Modifier.height(24.dp))
+
+        // 여기에 상세 정보를 더 추가하면 스크롤을 올렸을 때 보임
+        Text("상세 정보 더보기...", color = Color.Gray, modifier = Modifier.padding(vertical = 20.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painterResource(id = R.drawable.ic_clock), // 기존 리소스 사용
+                contentDescription = "Update",
+                tint = Color.Gray,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text("마지막 업데이트: 2분 전", fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+}
+
+@Composable
+fun InfoColumn(value: String, label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(text = label, fontSize = 12.sp, color = Color.Gray)
+    }
+}
+
+// TopContent, MapControlButtons는 기존 코드 그대로 사용 (BoxScope 제거 필요할 수 있음)
+// MapControlButtons의 BoxScope를 제거하고 Modifier.align을 사용하는 쪽에서 처리하도록 수정 권장
 
 @Composable
 fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {

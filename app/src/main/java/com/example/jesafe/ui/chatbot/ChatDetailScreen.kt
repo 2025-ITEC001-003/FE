@@ -194,20 +194,12 @@ fun EmptyStateContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // 로봇 아이콘 동그라미 배경
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(Color(0xFF2CA0F3).copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_robot),
-                contentDescription = stringResource(R.string.ai),
-                tint = Color(0xFF2CA0F3),
-                modifier = Modifier.size(48.dp)
-            )
-        }
+        Icon(
+            painter = painterResource(id = R.drawable.ic_robot),
+            contentDescription = stringResource(R.string.ai),
+            tint = Color(0xFF2CA0F3),
+            modifier = Modifier.size(80.dp)
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
