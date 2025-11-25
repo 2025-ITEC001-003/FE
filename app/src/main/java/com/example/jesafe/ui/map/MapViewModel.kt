@@ -36,6 +36,9 @@ class MapViewModel @Inject constructor(
     private val _gridData = mutableStateOf<List<GridCell>>(emptyList())
     val gridData: State<List<GridCell>> = _gridData
 
+    private val _selectedAccident = mutableStateOf<AccidentEntity?>(null)
+    val selectedAccident: State<AccidentEntity?> = _selectedAccident
+
     // 에러 이벤트를 위한 Channel (일회성 이벤트)
     private val _errorEvent = Channel<String>(Channel.BUFFERED)
     val errorEvent = _errorEvent.receiveAsFlow()
@@ -43,6 +46,10 @@ class MapViewModel @Inject constructor(
     // 로딩 상태
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
+
+    fun selectAccident(accident: AccidentEntity?) {
+        _selectedAccident.value = accident
+    }
 
     fun loadAccidents(zoom: Float, bounds: LatLngBounds? = null) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -91,7 +98,19 @@ class MapViewModel @Inject constructor(
         }
 
         withContext(Dispatchers.Main) {
-            _accidents.value = accidentList
+            // 선택된 마커가 리스트에 포함되도록 보장 (화면 이동 시 마커 사라짐 방지)
+            val currentSelected = _selectedAccident.value
+            val finalList = if (currentSelected != null) {
+                if (accidentList.any { it.id == currentSelected.id }) {
+                    accidentList
+                } else {
+                    accidentList + currentSelected
+                }
+            } else {
+                accidentList
+            }
+            
+            _accidents.value = finalList
             _gridData.value = emptyList()
         }
     }

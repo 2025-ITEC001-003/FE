@@ -32,7 +32,7 @@ interface AccidentDao {
         AND latitude BETWEEN :minLat AND :maxLat
         AND longitude BETWEEN :minLon AND :maxLon
         AND reportDate BETWEEN :minDate AND :maxDate
-        ORDER BY RANDOM()
+        ORDER BY id DESC
         LIMIT :limit
         """
     )

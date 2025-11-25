@@ -7,13 +7,17 @@ import androidx.room.PrimaryKey
 data class AccidentEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val reportNumber: String?,
-    val reportDate: String?,
-    val season: String?,
-    val reportWeekday: String?,
-    val latitude: Double?,
-    val longitude: Double?,
-    val accidentType: String?,
-    val temperature: Double?,
-    val windSpeed: Double?
+    val reportNumber: String? = null,
+    val ptnOcrnTypeNm: String? = null,
+    val ptnSymSeNm: String? = null,
+    val srilOncrNm: String? = null,
+    val trfcAcdntSeNm: String? = null,
+    val reportDate: String? = null,
+    val season: String? = null,
+    val reportWeekday: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val accidentType: String? = null,
+    val temperature: Double? = null,
+    val windSpeed: Double? = null
 )
