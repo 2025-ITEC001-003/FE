@@ -9,12 +9,12 @@
     <string name="enter_message">메시지를 입력하세요...</string>
     <string name="ai">AI</string>
     <string name="welcome_message">안전 AI 도우미입니다</string>
-    <string name="ask_safety_questions">교통 안전과 관련된 질문을 해보세요</string>
+    <string name="ask_safety_questions">제주도의 날씨, 관광, 안전사고와 관련된 질문을 해보세요</string>
     <string name="suggested_questions">추천 질문</string>
-    <string name="suggestion1">이 지역은 안전한가요?</string>
-    <string name="suggestion2">야간 운전 시 주의사항은?</string>
-    <string name="suggestion3">사고 다발 지역은 어디인가요?</string>
-    <string name="suggestion4">비오는 날 안전 운전 팁</string>
+    <string name="suggestion1">지금 내가 있는 지역은 안전해?</string>
+    <string name="suggestion2">오늘 제주도 날씨와 여행 시 주의할 점은?</string>
+    <string name="suggestion3">최근 사고가 많이 난 관광지는 어디야?</string>
+    <string name="suggestion4">비 오는 날 제주에서 안전하게 여행하는 방법 알려줘.</string>
     <string name="send">Send</string>
     <string name="mic">Mic</string>
     <string name="loading">...</string>
