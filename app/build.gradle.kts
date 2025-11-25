@@ -31,16 +31,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = localProperties.getProperty("KAKAO_NATIVE_APP_KEY", "")
         manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
-
-        // local.properties에서 서버 URL을 읽어오거나, 없으면 빈 문자열을 기본값으로 설정
-        val serverUrl = localProperties.getProperty("SERVER_URL", "")
-        buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
     }
 
     buildTypes {
         debug {
-            // 로컬 테스트를 위해 에뮬레이터에서 호스트 PC의 localhost를 가리키는 10.0.2.2를 사용합니다.
-            buildConfigField("String", "SERVER_URL", "\"http://10.0.2.2:8000/\"")
+            val serverUrl = localProperties.getProperty("SERVER_URL")
+            if (serverUrl.isNullOrBlank()) {
+                buildConfigField("String", "SERVER_URL", "\"http://10.0.2.2:8000/\"")
+            } else {
+                buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
+            }
         }
         release {
             isMinifyEnabled = false

@@ -74,9 +74,13 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(@DefaultOkHttpClient okHttpClient: OkHttpClient): Retrofit {
+        val baseUrl = if (BuildConfig.SERVER_URL.isNotBlank()) {
+            BuildConfig.SERVER_URL
+        } else {
+            "http://10.0.2.2:8000/"
+        }
         return Retrofit.Builder()
-//            .baseUrl("http://10.0.2.2:8000/")
-            .baseUrl("http://3.37.68.172:8000/")
+            .baseUrl(baseUrl)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create()))
             .build()
