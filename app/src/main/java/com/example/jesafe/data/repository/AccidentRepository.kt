@@ -12,15 +12,17 @@ class AccidentRepository @Inject constructor(
 ) {
     suspend fun getAllAccidents() = dao.getAll()
 
-    suspend fun getAccidentsGroupedByGrid() = dao.getAccidentsGroupedByGrid()
+    suspend fun getAccidentsGroupedByGrid(minDate: String, maxDate: String) = dao.getAccidentsGroupedByGrid(minDate, maxDate)
 
     suspend fun getAccidentsInBoundsSampled(
         minLat: Double,
         maxLat: Double,
         minLon: Double,
         maxLon: Double,
-        limit: Int
-    ) = dao.getAccidentsInBoundsSampled(minLat, maxLat, minLon, maxLon, limit)
+        limit: Int,
+        minDate: String,
+        maxDate: String
+    ) = dao.getAccidentsInBoundsSampled(minLat, maxLat, minLon, maxLon, limit, minDate, maxDate)
 
     suspend fun insertAll(accidents: List<AccidentEntity>) = dao.insertAll(accidents)
 }

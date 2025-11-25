@@ -14,6 +14,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -59,7 +62,8 @@ class MapViewModel @Inject constructor(
     }
 
     private suspend fun loadGridData() {
-        val gridList = repository.getAccidentsGroupedByGrid()
+        val (minDate, maxDate) = getDateRange()
+        val gridList = repository.getAccidentsGroupedByGrid(minDate, maxDate)
         withContext(Dispatchers.Main) {
             _gridData.value = gridList
             _accidents.value = emptyList()
@@ -67,16 +71,23 @@ class MapViewModel @Inject constructor(
     }
 
     private suspend fun loadSampledMarkers(bounds: LatLngBounds?) {
+        val (minDate, maxDate) = getDateRange()
         val accidentList = if (bounds != null) {
             repository.getAccidentsInBoundsSampled(
                 minLat = bounds.southwest.latitude,
                 maxLat = bounds.northeast.latitude,
                 minLon = bounds.southwest.longitude,
                 maxLon = bounds.northeast.longitude,
-                limit = MAX_MARKERS_DISPLAY
+                limit = MAX_MARKERS_DISPLAY,
+                minDate = minDate,
+                maxDate = maxDate
             )
         } else {
-            repository.getAllAccidents().take(MAX_MARKERS_DISPLAY)
+            val all = repository.getAllAccidents()
+            all.filter { 
+                val date = it.reportDate ?: ""
+                date >= minDate && date <= maxDate 
+            }.take(MAX_MARKERS_DISPLAY)
         }
 
         withContext(Dispatchers.Main) {
@@ -106,5 +117,20 @@ class MapViewModel @Inject constructor(
             }
             _errorEvent.send(errorMessage)
         }
+    }
+
+    private fun getDateRange(): Pair<String, String> {
+        val calendar = Calendar.getInstance()
+        if (calendar.get(Calendar.YEAR) < 2025) {
+            calendar.set(2025, Calendar.FEBRUARY, 1)
+        }
+
+        val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+        val maxDate = dateFormat.format(calendar.time)
+        
+        calendar.add(Calendar.MONTH, -1)
+        val minDate = dateFormat.format(calendar.time)
+        
+        return Pair(minDate, maxDate)
     }
 }

@@ -15,10 +15,11 @@ interface AccidentDao {
             COUNT(*) AS accidentCount
         FROM accident
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        AND reportDate BETWEEN :minDate AND :maxDate
         GROUP BY latCenter, lonCenter
     """
     )
-    suspend fun getAccidentsGroupedByGrid(): List<GridCell>
+    suspend fun getAccidentsGroupedByGrid(minDate: String, maxDate: String): List<GridCell>
 
     @Query("SELECT * FROM accident")
     suspend fun getAll(): List<AccidentEntity>
@@ -30,6 +31,7 @@ interface AccidentDao {
         AND longitude IS NOT NULL
         AND latitude BETWEEN :minLat AND :maxLat
         AND longitude BETWEEN :minLon AND :maxLon
+        AND reportDate BETWEEN :minDate AND :maxDate
         ORDER BY RANDOM()
         LIMIT :limit
         """
@@ -39,9 +41,14 @@ interface AccidentDao {
         maxLat: Double,
         minLon: Double,
         maxLon: Double,
-        limit: Int
+        limit: Int,
+        minDate: String,
+        maxDate: String
     ): List<AccidentEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(accidents: List<AccidentEntity>)
+
+    @Query("DELETE FROM accident")
+    suspend fun deleteAll()
 }

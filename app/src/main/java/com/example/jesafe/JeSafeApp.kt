@@ -23,13 +23,11 @@ class JeSafeApp : Application() {
     @Inject
     lateinit var database: AppDatabase
 
-    // 애플리케이션 생명주기와 연결된 코루틴 스코프
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
 
-        // 디버그 키 해시 값 로깅
         val keyHash = Utility.getKeyHash(this)
         Log.d("KEY_HASH", keyHash)
 
@@ -37,7 +35,7 @@ class JeSafeApp : Application() {
         KakaoSdk.init(this, "bb30f164f208df568bc0c2a1d39d20b0")
 
         applicationScope.launch {
-            CsvImporter.importIfEmpty(this@JeSafeApp, database)
+            CsvImporter.importFromCsv(this@JeSafeApp, database)
             Log.d(TAG, "CSV import completed")
         }
     }
