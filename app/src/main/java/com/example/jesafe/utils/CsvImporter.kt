@@ -11,7 +11,6 @@ import java.io.InputStreamReader
 object CsvImporter {
 
     suspend fun importFromCsv(context: Context, db: AppDatabase) = withContext(Dispatchers.IO) {
-        // 기존 데이터 삭제 (개발 중 데이터 갱신용)
         db.accidentDao().deleteAll()
 
         val inputStream = context.assets.open("jeju_accidents.csv")
@@ -25,15 +24,19 @@ object CsvImporter {
             if (cols.size >= 16) {
                 try {
                     val entity = AccidentEntity(
-                        reportNumber = cols.getOrNull(0)?.ifBlank { null },      // DCLR_NO
-                        reportDate = cols.getOrNull(6)?.ifBlank { null },          // DCLR_YMD
-                        season = cols.getOrNull(7)?.ifBlank { null },              // SEASN_NM
-                        reportWeekday = cols.getOrNull(8)?.ifBlank { null },       // DCLR_DOW
-                        longitude = cols.getOrNull(10)?.toDoubleOrNull(),          // ACDNT_OCRN_LOT
-                        latitude = cols.getOrNull(11)?.toDoubleOrNull(),           // ACDNT_OCRN_LAT
-                        accidentType = cols.getOrNull(5)?.ifBlank { null },        // ACDNT_INJR_NM
-                        temperature = cols.getOrNull(12)?.toDoubleOrNull(),        // HR_UNIT_ARTMP
-                        windSpeed = cols.getOrNull(14)?.toDoubleOrNull()           // HR_UNIT_WSPD
+                        reportNumber = cols.getOrNull(0)?.ifBlank { null },
+                        ptnOcrnTypeNm = cols.getOrNull(1)?.ifBlank { null },
+                        ptnSymSeNm = cols.getOrNull(2)?.ifBlank { null },
+                        srilOncrNm = cols.getOrNull(3)?.ifBlank { null },
+                        trfcAcdntSeNm = cols.getOrNull(4)?.ifBlank { null },
+                        accidentType = cols.getOrNull(5)?.ifBlank { null },
+                        reportDate = cols.getOrNull(6)?.ifBlank { null },
+                        season = cols.getOrNull(7)?.ifBlank { null },
+                        reportWeekday = cols.getOrNull(8)?.ifBlank { null },
+                        longitude = cols.getOrNull(10)?.toDoubleOrNull(),
+                        latitude = cols.getOrNull(11)?.toDoubleOrNull(),
+                        temperature = cols.getOrNull(12)?.toDoubleOrNull(),
+                        windSpeed = cols.getOrNull(14)?.toDoubleOrNull()
                     )
                     accidentList.add(entity)
                 } catch (e: Exception) {

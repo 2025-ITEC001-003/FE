@@ -9,7 +9,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,17 +21,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.jesafe.data.local.AccidentEntity
 import com.example.jesafe.data.local.GridCell
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polygon
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -38,9 +46,14 @@ fun MapScreen(
     val accidents by viewModel.accidents
     val gridData by viewModel.gridData
     val isLoading by viewModel.isLoading
+    val selectedAccident by viewModel.selectedAccident
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    // 에러 이벤트 수신 및 Snackbar 표시
+    var isMapAnimating by remember { mutableStateOf(false) }
+
+    val isMapMoving = cameraPositionState.isMoving
+
     LaunchedEffect(Unit) {
         viewModel.errorEvent.collect { errorMessage ->
             snackbarHostState.showSnackbar(
@@ -50,11 +63,10 @@ fun MapScreen(
         }
     }
 
-    // 지도 이동이 멈췄을 때만 데이터 로드 (성능 최적화)
     LaunchedEffect(cameraPositionState) {
         snapshotFlow { cameraPositionState.isMoving }
             .debounce(MapConstants.DEBOUNCE_DELAY_MS)
-            .filter { !it } // 움직임이 멈췄을 때만
+            .filter { !it }
             .collect { 
                 val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
                 viewModel.loadAccidents(cameraPositionState.position.zoom, bounds)
@@ -64,7 +76,12 @@ fun MapScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState
+            cameraPositionState = cameraPositionState,
+            onMapClick = {
+                if (!isMapAnimating && !isMapMoving) {
+                    viewModel.selectAccident(null)
+                }
+            }
         ) {
             val currentZoom = cameraPositionState.position.zoom
 
@@ -74,7 +91,48 @@ fun MapScreen(
                 }
 
                 currentZoom >= MapConstants.ZOOM_THRESHOLD_MARKERS -> {
-                    RenderAccidentMarkers(accidents)
+                    RenderAccidentMarkers(
+                        accidents = accidents,
+                        selectedAccident = selectedAccident,
+                        isMapAnimating = isMapAnimating,
+                        isMapMoving = isMapMoving,
+                        onMarkerClick = { accident ->
+                            if (selectedAccident?.id == accident.id) {
+                                scope.launch {
+                                    isMapAnimating = true
+                                    try {
+                                        cameraPositionState.animate(
+                                            CameraUpdateFactory.newLatLng(LatLng(accident.latitude!!, accident.longitude!!)),
+                                            durationMs = 500
+                                        )
+                                    } finally {
+                                        delay(100)
+                                        isMapAnimating = false
+                                    }
+                                }
+                                return@RenderAccidentMarkers
+                            }
+
+                            viewModel.selectAccident(accident)
+                            scope.launch {
+                                isMapAnimating = true
+                                try {
+                                    cameraPositionState.animate(
+                                        CameraUpdateFactory.newLatLng(LatLng(accident.latitude!!, accident.longitude!!)),
+                                        durationMs = 500
+                                    )
+                                } finally {
+                                    delay(100) // 안정화 대기
+                                    isMapAnimating = false
+                                }
+                            }
+                        },
+                        onInfoWindowCloseRequest = { accident ->
+                            if (selectedAccident?.id == accident.id) {
+                                viewModel.selectAccident(null)
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -139,29 +197,73 @@ private fun HeatmapGridCell(
 }
 
 @Composable
-private fun RenderAccidentMarkers(accidents: List<AccidentEntity>) {
+private fun RenderAccidentMarkers(
+    accidents: List<AccidentEntity>,
+    selectedAccident: AccidentEntity?,
+    isMapAnimating: Boolean,
+    isMapMoving: Boolean,
+    onMarkerClick: (AccidentEntity) -> Unit,
+    onInfoWindowCloseRequest: (AccidentEntity) -> Unit
+) {
     accidents.forEach { accident ->
         if (accident.latitude != null && accident.longitude != null) {
-            AccidentMarker(accident)
+            key(accident.id) {
+                AccidentMarker(
+                    accident = accident, 
+                    isSelected = selectedAccident?.id == accident.id,
+                    isMapAnimating = isMapAnimating,
+                    isMapMoving = isMapMoving,
+                    onMarkerClick = onMarkerClick,
+                    onInfoWindowCloseRequest = onInfoWindowCloseRequest
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun AccidentMarker(accident: AccidentEntity) {
+private fun AccidentMarker(
+    accident: AccidentEntity,
+    isSelected: Boolean,
+    isMapAnimating: Boolean,
+    isMapMoving: Boolean,
+    onMarkerClick: (AccidentEntity) -> Unit,
+    onInfoWindowCloseRequest: (AccidentEntity) -> Unit
+) {
     val markerColor = getMarkerColorForAccidentType(accident.accidentType)
     val position = LatLng(accident.latitude!!, accident.longitude!!)
-    val markerState = remember(position) { MarkerState(position = position) }
+    val markerState = remember(accident.id) { MarkerState(position = position) }
 
-    Marker(
+    LaunchedEffect(isSelected, isMapAnimating, isMapMoving) {
+        if (isSelected) {
+            if (!isMapAnimating && !isMapMoving) {
+                delay(50)
+                markerState.showInfoWindow()
+            }
+        } else {
+            markerState.hideInfoWindow()
+        }
+    }
+
+    MarkerInfoWindow(
         state = markerState,
+        icon = BitmapDescriptorFactory.defaultMarker(markerColor),
         title = accident.accidentType ?: "사고",
         snippet = formatAccidentSnippet(accident),
-        icon = BitmapDescriptorFactory.defaultMarker(markerColor)
-    )
+        onClick = {
+            onMarkerClick(accident)
+            true
+        },
+        onInfoWindowClick = {
+            onInfoWindowCloseRequest(accident)
+        },
+        onInfoWindowClose = {
+        }
+    ) { marker ->
+        CustomInfoWindow(accident = accident, marker = marker)
+    }
 }
 
-// 상수 객체
 object MapConstants {
     const val DEFAULT_LAT = 33.38
     const val DEFAULT_LON = 126.53
@@ -169,10 +271,9 @@ object MapConstants {
     const val ZOOM_THRESHOLD_GRID = 11f
     const val ZOOM_THRESHOLD_MARKERS = 12f
     const val GRID_SIZE = 0.025
-    const val DEBOUNCE_DELAY_MS = 500L // 지도 이동 후 대기 시간
+    const val DEBOUNCE_DELAY_MS = 500L
 }
 
-// 색상 계산 함수
 private fun calculateHeatmapColor(intensity: Float): Color {
     return when {
         intensity < 0.25f -> {
@@ -216,14 +317,13 @@ private fun calculateHeatmapColor(intensity: Float): Color {
     }
 }
 
-// 사고 유형별 마커 색상
 private fun getMarkerColorForAccidentType(accidentType: String?): Float {
     return when (accidentType?.uppercase()) {
-        "차대사람" -> BitmapDescriptorFactory.HUE_RED        // 빨강 - 가장 위험
-        "차대차" -> BitmapDescriptorFactory.HUE_ORANGE      // 주황
-        "차량단독" -> BitmapDescriptorFactory.HUE_YELLOW    // 노랑
-        "철길건널목" -> BitmapDescriptorFactory.HUE_MAGENTA  // 자주
-        else -> BitmapDescriptorFactory.HUE_AZURE           // 하늘색 - 기타
+        "차대사람" -> BitmapDescriptorFactory.HUE_RED
+        "차대차" -> BitmapDescriptorFactory.HUE_ORANGE
+        "차량단독" -> BitmapDescriptorFactory.HUE_YELLOW
+        "철길건널목" -> BitmapDescriptorFactory.HUE_MAGENTA
+        else -> BitmapDescriptorFactory.HUE_AZURE
     }
 }
 

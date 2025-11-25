@@ -56,6 +56,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navigation
 import com.example.jesafe.R
 import com.example.jesafe.data.local.AccidentDao
 import com.example.jesafe.data.local.AccidentEntity
@@ -67,6 +68,7 @@ import com.example.jesafe.ui.chatbot.ChatDetailScreen
 import com.example.jesafe.ui.map.MapConstants
 import com.example.jesafe.ui.map.MapScreen
 import com.example.jesafe.ui.map.MapViewModel
+import com.example.jesafe.ui.main.MyInfoScreen
 import com.example.jesafe.ui.theme.JeSafeTheme
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -78,7 +80,6 @@ import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import androidx.navigation.navigation
 
 sealed class BottomNavItem(val route: String, val resourceId: Int, val title: String) {
     object Home : BottomNavItem("home", R.drawable.ic_home, "홈")
@@ -476,16 +477,22 @@ fun BoxScope.BottomInfoSheet() {
 fun HomeScreenPreview() {
     val fakeDao = object : AccidentDao {
         override suspend fun getAll(): List<AccidentEntity> = emptyList()
-        override suspend fun getAccidentsGroupedByGrid(): List<GridCell> = emptyList()
+        
+        override suspend fun getAccidentsGroupedByGrid(minDate: String, maxDate: String): List<GridCell> = emptyList()
+        
         override suspend fun getAccidentsInBoundsSampled(
             minLat: Double,
             maxLat: Double,
             minLon: Double,
             maxLon: Double,
-            limit: Int
+            limit: Int,
+            minDate: String,
+            maxDate: String
         ): List<AccidentEntity> = emptyList()
 
         override suspend fun insertAll(accidents: List<AccidentEntity>) {}
+
+        override suspend fun deleteAll() {}
     }
     val fakeRepository = AccidentRepository(fakeDao)
     val previewViewModel = remember { MapViewModel(fakeRepository) }
