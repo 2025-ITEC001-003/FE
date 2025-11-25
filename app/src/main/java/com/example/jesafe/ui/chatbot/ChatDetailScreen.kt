@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -106,66 +108,66 @@ fun ChatDetailScreen(
     }
 
     Scaffold(
-        // 🔥 상태바(및 시스템 바) 인셋을 제거해서 위쪽 배경 패딩 없애기
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            ChatInputField(
-                text = text,
-                onTextChange = { text = it },
-                onSendMessage = { sendMessage() },
-                enabled = !isSendingMessage
-            )
-        }
+        // 🔥 bottomBar 제거! (Box 안으로 이동)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // bottomBar 높이만큼의 padding은 그대로 적용됨
-                .padding(innerPadding)
-        ) {
-            if (messages.isEmpty()) {
-                // ✅ 채팅 내역이 하나도 없을 때: 추천 질문 화면
-                EmptyStateContent(
-                    onSuggestionClick = { suggestion ->
-                        text = suggestion
-                        sendMessage()
+                .padding(top = innerPadding.calculateTopPadding())        ) {
+            // 1. 채팅 리스트
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White) // 배경색
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { keyboardController?.hide() })
                     }
-                )
-            } else {
-                // ✅ 채팅 내역이 있을 때: 기존 대화 리스트
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.White)
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = {
-                                keyboardController?.hide()
-                            })
+            ) {
+                if (messages.isEmpty()) {
+                    EmptyStateContent(
+                        onSuggestionClick = { suggestion ->
+                            text = suggestion
+                            sendMessage()
                         }
-                ) {
+                    )
+                } else {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = 16.dp),
+                        // 🔥 중요: 입력창 높이만큼 아래에 여백을 줘서 마지막 메시지가 가려지지 않게 함
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            bottom = 100.dp, // 입력창 대략적인 높이 + 여유공간
+                            top = 64.dp      // 상단 여백
+                        )
                     ) {
-                        item { Spacer(modifier = Modifier.height(64.dp)) }
                         items(messages, key = { it.id }) { message ->
                             MessageBubble(
                                 message = message,
                                 snackbarHostState = snackbarHostState
                             )
                         }
-                        item { Spacer(modifier = Modifier.height(8.dp)) }
                     }
                 }
             }
 
-            // 👇 뒤로가기 플로팅 버튼은 그대로 유지
+            // 2. 입력창 (화면 하단에 고정 + 반투명 효과를 위해 리스트 위에 배치)
+            ChatInputField(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter), // 🔥 여기에 있던 .padding(...) 코드를 삭제하세요!
+                text = text,
+                onTextChange = { text = it },
+                onSendMessage = { sendMessage() },
+                enabled = !isSendingMessage
+            )
+
+            // 3. 뒤로가기 버튼 (그대로 유지)
             IconButton(
                 onClick = { navController.popBackStack() },
                 modifier = Modifier
-                    .padding(start = 16.dp, top = 16.dp)
+                    .padding(start = 16.dp, top = 50.dp) // 위치 약간 조정
                     .shadow(elevation = 4.dp, shape = CircleShape)
                     .background(color = Color.White, shape = CircleShape)
             ) {
@@ -194,20 +196,12 @@ fun EmptyStateContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // 로봇 아이콘 동그라미 배경
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(Color(0xFF2CA0F3).copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_robot),
-                contentDescription = stringResource(R.string.ai),
-                tint = Color(0xFF2CA0F3),
-                modifier = Modifier.size(48.dp)
-            )
-        }
+        Icon(
+            painter = painterResource(id = R.drawable.ic_robot),
+            contentDescription = stringResource(R.string.ai),
+            tint = Color(0xFF2CA0F3),
+            modifier = Modifier.size(80.dp)
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 

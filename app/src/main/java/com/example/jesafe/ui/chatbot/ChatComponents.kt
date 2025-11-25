@@ -14,13 +14,17 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +36,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
@@ -54,6 +59,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -477,75 +483,117 @@ private fun showToast(context: Context, message: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatInputField(
+    modifier: Modifier = Modifier,
     text: String,
     onTextChange: (String) -> Unit,
     onSendMessage: () -> Unit,
     enabled: Boolean
 ) {
-    Box(
-        modifier = Modifier
-            .background(Color.White)
-            .padding(AiChatScreenDefaults.InputFieldPadding)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.White.copy(alpha = 0.95f)) // 반투명 배경
+            .navigationBarsPadding() // 시스템 바 패딩
     ) {
-        Card(
+        // 상단 구분선 (얇게)
+        androidx.compose.material3.HorizontalDivider(
+            thickness = 0.5.dp,
+            color = Color(0xFFE0E0E0) // 연한 회색
+        )
+
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .shadow(elevation = AiChatScreenDefaults.InputFieldShadowElevation, shape = RoundedCornerShape(AiChatScreenDefaults.InputFieldCornerRadius)),
-            shape = RoundedCornerShape(AiChatScreenDefaults.InputFieldCornerRadius),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    top = 6.dp,     // 8dp -> 6dp로 축소
+                    bottom = 6.dp   // 🔥 4dp -> 6dp (하단 여백 최소화하되, 제스처 바와 너무 붙지 않게)
+                )
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // 1. 왼쪽 (+) 버튼 (회색 원형)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE5E5EA)) // iOS 스타일 연한 회색
+                    .clickable { /* 파일 첨부 등의 기능 */ },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // 2. 중앙 입력창 (테두리 + 내부 마이크 아이콘)
             Row(
-                modifier = Modifier.padding(horizontal = AiChatScreenDefaults.InputFieldRowPadding, vertical = AiChatScreenDefaults.InputFieldRowPadding),
+                modifier = Modifier
+                    .weight(1f) // 남은 공간 다 차지
+                    .height(38.dp) // 높이 고정 (알약 모양)
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFFE0E0E0), // 테두리 색상
+                        shape = RoundedCornerShape(50) // 완전 둥근 모양
+                    )
+                    .background(Color.White, RoundedCornerShape(50)) // 배경 흰색
+                    .padding(horizontal = 14.dp), // 내부 텍스트/아이콘 여백
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(AiChatScreenDefaults.InputFieldIconContainerSize)
-                        .background(Color(0xFF2CA0F3), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.ic_robot),
-                        contentDescription = stringResource(R.string.ai),
-                        tint = Color.White,
-                        modifier = Modifier.size(AiChatScreenDefaults.InputFieldIconSize)
-                    )
-                }
-                Spacer(Modifier.width(AiChatScreenDefaults.InputFieldSpacerWidth))
-                TextField(
+                // 커스텀 텍스트 필드 (밑줄 없는 버전)
+                androidx.compose.foundation.text.BasicTextField(
                     value = text,
                     onValueChange = onTextChange,
-                    modifier = Modifier.weight(1f),
-                    enabled = true,
-                    placeholder = { Text(stringResource(R.string.enter_message), color = Color.Gray) },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        disabledContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        cursorColor = Color(0xFF2CA0F3)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 4.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        fontSize = 16.sp,
+                        color = Color.Black
                     ),
+                    maxLines = 1, // 한 줄 입력 (필요시 늘리세요)
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (text.isEmpty()) {
+                                Text(
+                                    text = "무엇이든 물어보세요!",
+                                    color = Color.Gray,
+                                    fontSize = 15.sp
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { if (enabled) onSendMessage() }),
-                    maxLines = 5
+                    keyboardActions = KeyboardActions(onSend = { if (enabled) onSendMessage() })
                 )
-                Spacer(Modifier.width(AiChatScreenDefaults.InputFieldSpacerWidth))
+
+                Spacer(Modifier.width(8.dp))
+
+                // 3. 입력창 내부 아이콘 (마이크 <-> 전송 버튼 교체)
+                // 텍스트가 있으면 '전송(파란색)', 없으면 '마이크(회색)' 표시
                 if (text.isNotBlank()) {
-                    IconButton(onClick = onSendMessage, enabled = enabled) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = stringResource(R.string.send),
-                            tint = if (enabled) Color(0xFF2CA0F3) else Color.Gray
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = Color(0xFF2CA0F3), // 파란색 전송 버튼
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { if (enabled) onSendMessage() }
+                    )
                 } else {
                     Icon(
-                        painterResource(id = R.drawable.ic_mic),
-                        contentDescription = stringResource(R.string.mic),
+                        painter = painterResource(id = R.drawable.ic_mic),
+                        contentDescription = "Voice",
                         tint = Color.Gray,
-                        modifier = Modifier.size(AiChatScreenDefaults.InputFieldIconSize)
+                        modifier = Modifier
+                            .size(20.dp) // 마이크 아이콘 크기
+                            .clickable { /* 음성 인식 기능 */ }
                     )
                 }
             }

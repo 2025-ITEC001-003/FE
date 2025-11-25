@@ -37,9 +37,9 @@ android {
         debug {
             val serverUrl = localProperties.getProperty("SERVER_URL")
             if (serverUrl.isNullOrBlank()) {
-                buildConfigField("String", "SERVER_URL", "\"http://10.0.2.2:8000/\"")
+                buildConfigField("String", "SERVER_URL", "http://10.0.2.2:8000/")
             } else {
-                buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
+                buildConfigField("String", "SERVER_URL", "$serverUrl")
             }
         }
         release {
@@ -48,9 +48,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "SERVER_URL", "\"http://3.37.68.172:8000/\"")
+            buildConfigField("String", "SERVER_URL", "http://3.37.68.172:8000/")
         }
-
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

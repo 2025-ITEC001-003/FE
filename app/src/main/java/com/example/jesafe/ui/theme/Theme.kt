@@ -11,31 +11,47 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Black
+import androidx.compose.ui.graphics.Color.Companion.White
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = DeepBlue,
+    onPrimary = OffWhite,
+    secondary = SoftBlue,
+    onSecondary = NavyBlue,
+    tertiary = CobaltBlue,
+    onTertiary = NavyBlue,
+
+    background = NavyBlue,
+    onBackground = OffWhite,
+
+    surface = CharcoalGrey,
+    onSurface = OffWhite,
+
+    outline = LightGrey
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = SoftBlue,         // 가장 대표 컬러
+    onPrimary = OffWhite,       // primary 위에 올라갈 텍스트/아이콘
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondary = CobaltBlue,     // 보조 컬러
+    onSecondary = OffWhite,
+
+    tertiary = DeepBlue,        // 액센트 컬러
+    onTertiary = OffWhite,
+
+    background = White,
+    onBackground = Black,
+
+    surface = White,
+    onSurface = Black,
+
+    outline = LightGrey
 )
 
 @Composable
@@ -59,7 +75,9 @@ fun JeSafeTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = White.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
