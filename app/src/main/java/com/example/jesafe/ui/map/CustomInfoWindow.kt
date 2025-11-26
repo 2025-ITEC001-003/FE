@@ -15,13 +15,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Healing
-import androidx.compose.material.icons.filled.LinearScale
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -99,6 +104,8 @@ fun ClusterInfoWindow(
     cluster: ClusterArea,
     onClose: () -> Unit
 ) {
+    val clusterColor = ClusterUtils.getClusterColor(cluster.clusterId)
+
     Column(
         modifier = Modifier
             .width(320.dp)
@@ -114,9 +121,9 @@ fun ClusterInfoWindow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Adjust,
+                    imageVector = Icons.Default.TrackChanges,
                     contentDescription = "Cluster",
-                    tint = ClusterUtils.getClusterColor(cluster.clusterId),
+                    tint = clusterColor,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -124,7 +131,7 @@ fun ClusterInfoWindow(
                     text = "클러스터 ${cluster.clusterId}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF6200EE) // Purple to match the image
+                    color = clusterColor
                 )
             }
             IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
@@ -139,39 +146,44 @@ fun ClusterInfoWindow(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Basic Info
-        InfoItem(Icons.Default.LocationOn, "사고 건수:", "${cluster.count}건", Color(0xFFFF2D55))
-        InfoItem(Icons.Default.Adjust, "중심 좌표:", "(${String.format("%.4f", cluster.center.latitude)}, ${String.format("%.4f", cluster.center.longitude)})", Color(0xFFFF2D55))
-        InfoItem(Icons.Default.LinearScale, "반지름:", "${cluster.radius.toInt()}m (최대 거리: ${cluster.maxDistance.toInt()}m)", Color.Gray)
+        val redPinColor = Color(0xFFE91E63)
+        InfoItem(Icons.Default.PushPin, "사고 건수:", "${cluster.count}건", redPinColor)
+        InfoItem(Icons.Default.PushPin, "중심 좌표:", "(${String.format("%.4f", cluster.center.latitude)}, ${String.format("%.4f", cluster.center.longitude)})", redPinColor)
+        InfoItem(Icons.Default.Straighten, "반지름:", "${cluster.radius.toInt()}m (최대 거리: ${cluster.maxDistance.toInt()}m)", Color.Gray)
 
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
         Spacer(modifier = Modifier.height(16.dp))
 
         // Disease Stats
-        SectionHeader(Icons.Default.LocalHospital, "질병 분류", Color(0xFFA2845E)) 
+        SectionHeader(Icons.Default.LocalHospital, "질병 분류", Color.Gray) 
         cluster.stats.diseaseStats.forEach { (key, value) ->
-            // "질병" is reddish in the image, "질병외" is blueish
-            StatRow(key, value, if (key == "질병") Color(0xFFFF2D55) else Color(0xFF007AFF))
+            val iconTint = if (key == "질병") Color(0xFFFF5252) else Color(0xFF448AFF)
+            val icon = Icons.Default.Medication // Pill icon
+            StatRow(label = key, percent = value, color = iconTint, icon = icon)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Severity Stats
-        SectionHeader(Icons.Default.Warning, "사고 심각도", Color(0xFF5856D6))
+        SectionHeader(Icons.Default.Assessment, "사고 심각도", Color.Gray)
         cluster.stats.severityStats.forEach { (key, value) ->
-            // "교통사고" red, "중증외상" purple
-            StatRow(key, value, if (key == "교통사고") Color(0xFFFF3B30) else Color(0xFF5856D6))
+            val (icon, tint) = if (key == "교통사고") {
+                 Pair(Icons.Default.DirectionsCar, Color(0xFFFF5252))
+            } else {
+                 Pair(Icons.Default.MedicalServices, Color(0xFFAA00FF)) // Purple
+            }
+            StatRow(label = key, percent = value, color = tint, icon = icon)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Time Distribution
-        SectionHeader(Icons.Default.DateRange, "시간 분포 (Top 3)", Color(0xFF007AFF))
+        SectionHeader(Icons.Default.DateRange, "시간 분포 (Top 3)", Color.Gray)
         
         if (cluster.stats.topMonths.isNotEmpty()) {
             Text("주요 월:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp, bottom = 2.dp))
             cluster.stats.topMonths.take(3).forEach { (month, percent) ->
-                StatRow(month, percent, Color.DarkGray)
+                StatRow(label = month, percent = percent, color = Color.DarkGray, icon = null)
             }
         }
 
@@ -179,7 +191,7 @@ fun ClusterInfoWindow(
             Spacer(modifier = Modifier.height(8.dp))
             Text("주요 계절:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp, bottom = 2.dp))
             cluster.stats.topSeasons.take(3).forEach { (season, percent) ->
-                StatRow(season, percent, Color.DarkGray)
+                StatRow(label = season, percent = percent, color = Color.DarkGray, icon = null)
             }
         }
     }
@@ -236,7 +248,7 @@ private fun SectionHeader(icon: ImageVector, title: String, tint: Color) {
 }
 
 @Composable
-private fun StatRow(label: String, percent: Float, color: Color) {
+private fun StatRow(label: String, percent: Float, color: Color, icon: ImageVector?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -244,13 +256,18 @@ private fun StatRow(label: String, percent: Float, color: Color) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.DirectionsCar, // Generic icon, can be customized
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(12.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(16.dp)
+                )
+                 Spacer(modifier = Modifier.width(8.dp))
+            } else {
+                // Align text when no icon
+            }
+           
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,

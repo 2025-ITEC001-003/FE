@@ -8,7 +8,7 @@ import com.google.android.gms.maps.model.LatLng
  */
 data class ClusteredPoint(
     val accident: AccidentEntity,
-    val clusterId: Int, // 클러스터 ID (-1이면 노이즈로 취급 가능하지만, isNoise 필드 별도 존재)
+    val clusterId: Int,
     val isNoise: Boolean,
     val position: LatLng
 )
@@ -19,8 +19,8 @@ data class ClusteredPoint(
 data class ClusterArea(
     val clusterId: Int,
     val center: LatLng,
-    val radius: Double, // 미터 단위 (반경)
-    val maxDistance: Double, // 중심에서 가장 먼 점까지의 거리 (최대 거리)
+    val radius: Double,
+    val maxDistance: Double,
     val count: Int,
     val stats: ClusterStats
 )
@@ -29,8 +29,8 @@ data class ClusterArea(
  * 클러스터 내부 통계 정보
  */
 data class ClusterStats(
-    val diseaseStats: Map<String, Float>, // 예: "질병" -> 31.4, "질병외" -> 68.6
-    val severityStats: Map<String, Float>, // 예: "교통사고" -> 0.0, "중증외상" -> 5.7
-    val topMonths: List<Pair<String, Float>>, // 상위 월 분포
-    val topSeasons: List<Pair<String, Float>> // 상위 계절 분포
+    val diseaseStats: Map<String, Float>,
+    val severityStats: Map<String, Float>,
+    val topMonths: List<Pair<String, Float>>,
+    val topSeasons: List<Pair<String, Float>>
 )

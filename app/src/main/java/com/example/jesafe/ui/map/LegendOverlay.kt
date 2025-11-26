@@ -47,13 +47,18 @@ fun LegendOverlay(
 
     Card(
         modifier = modifier
-            .width(220.dp)
+            .width(200.dp)
             .padding(16.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = 12.dp,
+                vertical = if (isExpanded) 12.dp else 8.dp
+            )
+        ) {
             // Header
             Row(
                 modifier = Modifier
