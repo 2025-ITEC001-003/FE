@@ -26,6 +26,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.MarkerState
@@ -50,6 +51,8 @@ fun MapScreen(
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    val uiSettings = remember { MapUiSettings(zoomControlsEnabled = false) }
 
     var isMapAnimating by remember { mutableStateOf(false) }
     val isMapMoving = cameraPositionState.isMoving
@@ -77,6 +80,7 @@ fun MapScreen(
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
+            uiSettings = uiSettings,
             onMapClick = {
                 if (!isMapAnimating && !isMapMoving) {
                     viewModel.selectAccident(null)
@@ -84,7 +88,6 @@ fun MapScreen(
                 }
             }
         ) {
-            // 1. 클러스터 (영역 원 + 중심 핀)
             RenderClusters(
                 clusterAreas = clusterAreas,
                 onClusterPinClick = { cluster ->
@@ -92,7 +95,6 @@ fun MapScreen(
                 }
             )
 
-            // 2. 개별 포인트 (점 또는 핀)
             RenderClusteredPoints(
                 clusteredPoints = clusteredPoints,
                 selectedAccident = selectedAccident,
@@ -100,7 +102,6 @@ fun MapScreen(
                 isMapMoving = isMapMoving,
                 onPointClick = { point ->
                     val accident = point.accident
-                    // 이미 선택된 상태라면 애니메이션만
                     if (selectedAccident?.id == accident.id) {
                         scope.launch {
                             isMapAnimating = true
@@ -117,7 +118,6 @@ fun MapScreen(
                         return@RenderClusteredPoints
                     }
 
-                    // 선택 변경
                     viewModel.selectAccident(accident)
                     scope.launch {
                         isMapAnimating = true
@@ -137,14 +137,13 @@ fun MapScreen(
                 }
             )
         }
-        
-        // 범례 오버레이 (우측 상단)
+
         if (clusterAreas.isNotEmpty()) {
             LegendOverlay(
                 clusters = clusterAreas,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 64.dp, end = 16.dp),
+                    .padding(top = 48.dp, end = 4.dp),
                 onClusterClick = { cluster ->
                     viewModel.selectCluster(cluster)
                     scope.launch {
@@ -156,8 +155,7 @@ fun MapScreen(
                 }
             )
         }
-        
-        // 클러스터 상세 정보창 (화면 중앙 오버레이)
+
         if (selectedCluster != null) {
             Box(
                 modifier = Modifier
@@ -171,7 +169,6 @@ fun MapScreen(
             }
         }
 
-        // 로딩 인디케이터
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier
@@ -180,7 +177,6 @@ fun MapScreen(
             )
         }
 
-        // Snackbar 호스트
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -199,18 +195,16 @@ private fun RenderClusters(
         val baseColor = ClusterUtils.getClusterColor(cluster.clusterId)
         val fillColor = baseColor.copy(alpha = 0.2f)
         val strokeColor = baseColor.copy(alpha = 0.8f)
-        
-        // 1. 영역 (원)
+
         Circle(
             center = cluster.center,
             radius = cluster.radius,
             fillColor = fillColor,
             strokeColor = strokeColor,
             strokeWidth = 2f,
-            clickable = false // 영역 클릭 간섭 방지 (핀 클릭 유도)
+            clickable = false
         )
 
-        // 2. 중심 핀 (Marker) - 정보창은 오버레이로 표시하므로 기본 MarkerInfoWindow는 사용하지 않음
         val markerState = remember(cluster.clusterId) { MarkerState(position = cluster.center) }
         
         Marker(
@@ -219,7 +213,7 @@ private fun RenderClusters(
             title = "Cluster ${cluster.clusterId}",
             onClick = {
                 onClusterPinClick(cluster)
-                true // 기본 InfoWindow 표시 방지
+                true
             }
         )
     }
@@ -240,7 +234,6 @@ private fun RenderClusteredPoints(
                 val isSelected = selectedAccident?.id == point.accident.id
                 
                 if (isSelected) {
-                    // 선택된 경우: 핀(Marker)으로 상세 정보 표시
                     ClusteredAccidentMarker(
                         point = point,
                         isSelected = true,
@@ -250,13 +243,11 @@ private fun RenderClusteredPoints(
                         onInfoWindowCloseRequest = onInfoWindowCloseRequest
                     )
                 } else {
-                    // 선택되지 않은 경우: 점(Dot)으로 표시
-                    // 노이즈는 회색, 클러스터는 해당 색상
                     val color = if (point.isNoise) Color.Gray else ClusterUtils.getClusterColor(point.clusterId)
                     
                     Circle(
                         center = point.position,
-                        radius = 6.0, // 점의 크기 (미터 단위)
+                        radius = 6.0,
                         fillColor = color,
                         strokeColor = Color.White,
                         strokeWidth = 1f,
@@ -280,7 +271,7 @@ private fun ClusteredAccidentMarker(
     onInfoWindowCloseRequest: (AccidentEntity) -> Unit
 ) {
     val markerHue = ClusterUtils.getMarkerHue(point.clusterId)
-    val zIndex = 2.0f // 선택된 마커는 점보다 위에
+    val zIndex = 2.0f
     
     val position = point.position
     val markerState = remember(point.accident.id) { MarkerState(position = position) }
@@ -327,7 +318,6 @@ object MapConstants {
     const val DEBOUNCE_DELAY_MS = 500L
 }
 
-// 마커 스니펫 포맷팅
 private fun formatAccidentSnippet(accident: AccidentEntity): String {
     return buildString {
         accident.reportDate?.let { append("날짜: $it\n") }

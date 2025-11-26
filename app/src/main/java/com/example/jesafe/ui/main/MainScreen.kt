@@ -1,4 +1,3 @@
-
 package com.example.jesafe.ui.main
 
 import android.Manifest
@@ -98,21 +97,18 @@ sealed class BottomNavItem(val route: String, val resourceId: Int, val title: St
 fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel) {
     val bottomNavItems = listOf(BottomNavItem.Home, BottomNavItem.AiChat, BottomNavItem.MyInfo)
 
-    // PagerState
     val pagerState = rememberPagerState { bottomNavItems.size }
     val coroutineScope = rememberCoroutineScope()
 
-    // 🔹 무거운 애들 밖으로 빼두기
     val mapViewModel: MapViewModel = hiltViewModel()
     val chatNavController = rememberNavController()
 
     Scaffold(
         bottomBar = {
             NavigationBar(
-                // ✅ 여기 modifier에 shadow 추가
                 modifier = Modifier.shadow(
-                    elevation = 12.dp, // 그림자 높이 (값이 클수록 그림자가 넓고 진해짐)
-                    spotColor = Color.Black, // 그림자 색상 (검은색이 가장 무난)
+                    elevation = 12.dp,
+                    spotColor = Color.Black,
                     ambientColor = Color.Black
                 ),
                 containerColor = Color.White
@@ -137,7 +133,6 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
                         ),
                         onClick = {
                             coroutineScope.launch {
-                                // 🔹 빠르게 반응하는 느낌: 바로 animateScrollToPage
                                 pagerState.animateScrollToPage(index)
                             }
                         }
@@ -149,7 +144,6 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.padding(innerPadding),
-            // ✅ 핵심 변경: 홈 화면(0) 일 때는 Pager의 스와이프를 막아서 지도가 터치를 받게 함
             userScrollEnabled = pagerState.currentPage != 0
         ) { page ->
             when (page) {
@@ -190,7 +184,7 @@ fun MainScreen(rootNavController: NavController, loginViewModel: LoginViewModel)
 
 
 
-@OptIn(ExperimentalMaterial3Api::class) // BottomSheetScaffold 사용을 위해 필요
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(mapViewModel: MapViewModel) {
     var showWarning by remember { mutableStateOf(true) }
@@ -201,49 +195,42 @@ fun HomeScreen(mapViewModel: MapViewModel) {
         )
     }
 
-    // BottomSheet 상태 관리 (필요 시 sheetState로 프로그램적 제어 가능)
     val scaffoldState = rememberBottomSheetScaffoldState()
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetPeekHeight = 100.dp, // 처음에 보이는 높이 (사진의 요약 정보 높이만큼 설정)
+        sheetPeekHeight = 100.dp,
         sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         sheetContainerColor = Color.White,
         sheetContent = {
-            // ✅ 여기에 드래그 가능한 하단 정보 UI 배치
             BottomInfoContent()
         },
-        containerColor = Color.Transparent // 지도가 배경이므로 투명
+        containerColor = Color.Transparent
     ) { paddingValues ->
-        // ✅ 메인 컨텐츠 (지도 + 상단 버튼들)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // BottomSheet 공간만큼 패딩 처리 (원치 않으면 제거 가능)
+                .padding(paddingValues)
         ) {
-            // 1. 지도 (가장 뒤)
             MapScreen(
                 viewModel = mapViewModel,
                 cameraPositionState = cameraPositionState
             )
 
-            // 2. 상단 경고 및 정보 (지도 위)
             TopContent(showWarning = showWarning, onDismissWarning = { showWarning = false })
 
-            // 3. 우측 하단 컨트롤 버튼 (지도 위)
             MapControlButtons(cameraPositionState = cameraPositionState)
         }
     }
 }
 
-// 기존 BottomInfoSheet 내용을 분리하여 재사용하기 쉽게 만듦
 @Composable
 fun BottomInfoContent() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
-            .heightIn(min = 20.dp, max = 500.dp) // 최소/최대 높이 설정 가능
+            .heightIn(min = 20.dp, max = 500.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Text(
@@ -276,12 +263,11 @@ fun BottomInfoContent() {
         }
         Spacer(Modifier.height(24.dp))
 
-        // 여기에 상세 정보를 더 추가하면 스크롤을 올렸을 때 보임
         Text("상세 정보 더보기...", color = Color.Gray, modifier = Modifier.padding(vertical = 20.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                painterResource(id = R.drawable.ic_clock), // 기존 리소스 사용
+                painterResource(id = R.drawable.ic_clock),
                 contentDescription = "Update",
                 tint = Color.Gray,
                 modifier = Modifier.size(14.dp)
@@ -305,16 +291,12 @@ fun InfoColumn(value: String, label: String, color: Color) {
     }
 }
 
-// TopContent, MapControlButtons는 기존 코드 그대로 사용 (BoxScope 제거 필요할 수 있음)
-// MapControlButtons의 BoxScope를 제거하고 Modifier.align을 사용하는 쪽에서 처리하도록 수정 권장
-
 @Composable
 fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    // 위치 권한 요청 launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -322,7 +304,6 @@ fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
         val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
 
         if (fineLocationGranted || coarseLocationGranted) {
-            // 권한이 승인되면 위치 가져오기
             scope.launch {
                 try {
                     val cancellationTokenSource = CancellationTokenSource()
@@ -353,28 +334,8 @@ fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
             .padding(end = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        FloatingActionButton(
-            onClick = {
-                // 위치 권한 요청
-                locationPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    )
-                )
-            },
-            shape = CircleShape,
-            containerColor = Color.White,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_my_location),
-                contentDescription = "Current Location",
-                tint = Color(0xFF2CA0F3),
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(180.dp))
+
         FloatingActionButton(
             onClick = {
                 scope.launch {
@@ -407,6 +368,29 @@ fun BoxScope.MapControlButtons(cameraPositionState: CameraPositionState) {
                 painter = painterResource(id = R.drawable.ic_remove),
                 contentDescription = "Zoom Out",
                 tint = Color.DarkGray,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        FloatingActionButton(
+            onClick = {
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            },
+             modifier = Modifier.size(48.dp),
+             shape = CircleShape,
+             containerColor = Color.White
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_my_location),
+                contentDescription = "Current Location",
+                tint = Color(0xFF2CA0F3),
                 modifier = Modifier.size(24.dp)
             )
         }

@@ -6,15 +6,14 @@ import com.google.android.gms.maps.model.LatLng
 
 object ClusteringHelper {
 
-    private const val EPSILON_METERS = 500.0 // 클러스터링 거리 기준 (미터)
-    private const val MIN_POINTS = 3 // 클러스터 최소 포인트 수
+    private const val EPSILON_METERS = 500.0
+    private const val MIN_POINTS = 3
 
     fun performClustering(accidents: List<AccidentEntity>): Pair<List<ClusterArea>, List<ClusteredPoint>> {
         val visited = BooleanArray(accidents.size)
-        val clusterIds = IntArray(accidents.size) { -1 } // -1: Noise or Unvisited initially
+        val clusterIds = IntArray(accidents.size) { -1 }
         var clusterIdCounter = 0
-        
-        // 1. DBSCAN 알고리즘 적용
+
         for (i in accidents.indices) {
             if (visited[i]) continue
             visited[i] = true
@@ -30,7 +29,6 @@ object ClusteringHelper {
             }
         }
 
-        // 2. 결과 변환
         val clusteredPoints = accidents.mapIndexed { index, accident ->
             val cId = clusterIds[index]
             val isNoise = cId == -1
@@ -42,7 +40,6 @@ object ClusteringHelper {
             )
         }
 
-        // 3. 클러스터 영역 계산
         val clusterAreas = clusteredPoints
             .filter { !it.isNoise }
             .groupBy { it.clusterId }
@@ -109,13 +106,14 @@ object ClusteringHelper {
 
     private fun calculateClusterArea(clusterId: Int, points: List<ClusteredPoint>): ClusterArea {
         val total = points.size.toFloat()
+        if (total == 0f) {
+             return ClusterArea(clusterId, LatLng(0.0,0.0), 0.0, 0.0, 0, ClusterStats(emptyMap(), emptyMap(), emptyList(), emptyList()))
+        }
 
-        // 중심 좌표 계산 (평균)
         val avgLat = points.map { it.position.latitude }.average()
         val avgLon = points.map { it.position.longitude }.average()
         val center = LatLng(avgLat, avgLon)
 
-        // 반지름 계산
         var maxDist = 0.0
         points.forEach { point ->
             val results = FloatArray(1)
@@ -124,32 +122,36 @@ object ClusteringHelper {
                 maxDist = results[0].toDouble()
             }
         }
-        val radius = if (maxDist == 0.0) 50.0 else maxDist + 20.0 // 약간의 여유
+        val radius = if (maxDist == 0.0) 50.0 else maxDist + 20.0
 
-        // 통계: 질병 분류 (질병 vs 질병외)
-        // ptnSymSeNm: 환자증상구분명
-        val diseaseCount = points.count { it.accident.ptnSymSeNm?.contains("질병") == true }
+        val diseaseCount = points.count { 
+            it.accident.ptnOcrnTypeNm == "질병"
+        }
         val diseaseStats = mapOf(
             "질병" to (diseaseCount / total * 100),
             "질병외" to ((points.size - diseaseCount) / total * 100)
         )
 
-        // 통계: 사고 심각도 (개별 체크)
-        // trfcAcdntSeNm: 교통사고구분명 (Y/N 가정)
-        // srilOncrNm: 중증외상구분명 (Y/N 가정)
+        val trafficCount = points.count { 
+            !it.accident.trfcAcdntSeNm.isNullOrEmpty()
+        }
+
+        val severeCount = points.count { 
+             val v = it.accident.srilOncrNm
+             !v.isNullOrEmpty() && v.contains("중증")
+        }
+        
         val severityStats = mapOf(
-            "교통사고" to (points.count { it.accident.trfcAcdntSeNm?.equals("Y", ignoreCase = true) == true || it.accident.trfcAcdntSeNm?.equals("Yes", ignoreCase = true) == true } / total * 100),
-            "중증외상" to (points.count { it.accident.srilOncrNm?.equals("Y", ignoreCase = true) == true || it.accident.srilOncrNm?.equals("Yes", ignoreCase = true) == true } / total * 100)
+            "교통사고" to (trafficCount / total * 100),
+            "중증외상" to (severeCount / total * 100)
         )
 
-        // 통계: 월별 분포
         val topMonths = points.mapNotNull { 
             it.accident.reportDate?.takeIf { d -> d.length >= 6 }?.substring(4, 6)?.toIntOrNull()?.toString()?.plus("월") 
         }.groupingBy { it }.eachCount().entries
             .sortedByDescending { it.value }
             .map { it.key to (it.value / total * 100) }
 
-        // 통계: 계절 분포
         val topSeasons = points.mapNotNull { it.accident.season }
             .groupingBy { it }.eachCount().entries
             .sortedByDescending { it.value }
