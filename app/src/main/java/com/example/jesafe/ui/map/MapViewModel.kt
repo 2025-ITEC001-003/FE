@@ -25,19 +25,25 @@ class MapViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        private const val ZOOM_THRESHOLD_GRID = 11f
-        private const val ZOOM_THRESHOLD_MARKERS = 12f
-        private const val MAX_MARKERS_DISPLAY = 150
+        // 더 이상 줌 레벨에 따라 그리드/마커를 나누지 않으므로 THRESHOLD 상수를 제거하거나 무시합니다.
+        private const val MAX_MARKERS_DISPLAY = 500 
     }
 
     private val _accidents = mutableStateOf<List<AccidentEntity>>(emptyList())
     val accidents: State<List<AccidentEntity>> = _accidents
 
-    private val _gridData = mutableStateOf<List<GridCell>>(emptyList())
-    val gridData: State<List<GridCell>> = _gridData
+    // 클러스터링된 포인트 및 영역
+    private val _clusteredPoints = mutableStateOf<List<ClusteredPoint>>(emptyList())
+    val clusteredPoints: State<List<ClusteredPoint>> = _clusteredPoints
+
+    private val _clusterAreas = mutableStateOf<List<ClusterArea>>(emptyList())
+    val clusterAreas: State<List<ClusterArea>> = _clusterAreas
 
     private val _selectedAccident = mutableStateOf<AccidentEntity?>(null)
     val selectedAccident: State<AccidentEntity?> = _selectedAccident
+
+    private val _selectedCluster = mutableStateOf<ClusterArea?>(null)
+    val selectedCluster: State<ClusterArea?> = _selectedCluster
 
     // 에러 이벤트를 위한 Channel (일회성 이벤트)
     private val _errorEvent = Channel<String>(Channel.BUFFERED)
@@ -47,77 +53,61 @@ class MapViewModel @Inject constructor(
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
+    // 데이터가 이미 로드되었는지 확인하는 플래그
+    private var isDataLoaded = false
+    
     fun selectAccident(accident: AccidentEntity?) {
         _selectedAccident.value = accident
+        if (accident != null) {
+            _selectedCluster.value = null
+        }
+    }
+
+    fun selectCluster(cluster: ClusterArea?) {
+        _selectedCluster.value = cluster
+        if (cluster != null) {
+            _selectedAccident.value = null
+        }
     }
 
     fun loadAccidents(zoom: Float, bounds: LatLngBounds? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                setLoading(true)
-                when {
-                    zoom < ZOOM_THRESHOLD_GRID -> loadGridData()
-                    zoom >= ZOOM_THRESHOLD_MARKERS -> loadSampledMarkers(bounds)
-                    else -> clearAccidents()
+        // 줌 레벨과 상관없이 최초 1회만 로드하거나, 데이터가 없을 때 로드
+        // 항상 클러스터링(마커) 모드로 동작
+        if (!isDataLoaded) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    setLoading(true)
+                    loadAllMarkersForClustering()
+                    isDataLoaded = true
+                } catch (e: Exception) {
+                    handleError(e)
+                } finally {
+                    setLoading(false)
                 }
-            } catch (e: Exception) {
-                handleError(e)
-            } finally {
-                setLoading(false)
             }
         }
     }
 
-    private suspend fun loadGridData() {
-        val (minDate, maxDate) = getDateRange()
-        val gridList = repository.getAccidentsGroupedByGrid(minDate, maxDate)
-        withContext(Dispatchers.Main) {
-            _gridData.value = gridList
-            _accidents.value = emptyList()
-        }
-    }
+    // 그리드 로직(loadGridData)은 사용하지 않음
 
-    private suspend fun loadSampledMarkers(bounds: LatLngBounds?) {
+    private suspend fun loadAllMarkersForClustering() {
+        if (_clusteredPoints.value.isNotEmpty()) return
+
         val (minDate, maxDate) = getDateRange()
-        val accidentList = if (bounds != null) {
-            repository.getAccidentsInBoundsSampled(
-                minLat = bounds.southwest.latitude,
-                maxLat = bounds.northeast.latitude,
-                minLon = bounds.southwest.longitude,
-                maxLon = bounds.northeast.longitude,
-                limit = MAX_MARKERS_DISPLAY,
-                minDate = minDate,
-                maxDate = maxDate
-            )
-        } else {
-            val all = repository.getAllAccidents()
-            all.filter { 
+        
+        val allAccidents = repository.getAllAccidents()
+            .filter { 
                 val date = it.reportDate ?: ""
                 date >= minDate && date <= maxDate 
-            }.take(MAX_MARKERS_DISPLAY)
-        }
-
-        withContext(Dispatchers.Main) {
-            // 선택된 마커가 리스트에 포함되도록 보장 (화면 이동 시 마커 사라짐 방지)
-            val currentSelected = _selectedAccident.value
-            val finalList = if (currentSelected != null) {
-                if (accidentList.any { it.id == currentSelected.id }) {
-                    accidentList
-                } else {
-                    accidentList + currentSelected
-                }
-            } else {
-                accidentList
             }
-            
-            _accidents.value = finalList
-            _gridData.value = emptyList()
-        }
-    }
+            .take(MAX_MARKERS_DISPLAY)
 
-    private suspend fun clearAccidents() {
+        val (areas, points) = ClusteringHelper.performClustering(allAccidents)
+
         withContext(Dispatchers.Main) {
-            _accidents.value = emptyList()
+            _accidents.value = allAccidents
+            _clusteredPoints.value = points
+            _clusterAreas.value = areas
         }
     }
 

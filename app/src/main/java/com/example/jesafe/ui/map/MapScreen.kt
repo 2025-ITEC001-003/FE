@@ -20,17 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.jesafe.data.local.AccidentEntity
-import com.example.jesafe.data.local.GridCell
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
 import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.Polygon
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -44,14 +42,16 @@ fun MapScreen(
     cameraPositionState: CameraPositionState
 ) {
     val accidents by viewModel.accidents
-    val gridData by viewModel.gridData
+    val clusteredPoints by viewModel.clusteredPoints
+    val clusterAreas by viewModel.clusterAreas
     val isLoading by viewModel.isLoading
     val selectedAccident by viewModel.selectedAccident
+    val selectedCluster by viewModel.selectedCluster
+    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     var isMapAnimating by remember { mutableStateOf(false) }
-
     val isMapMoving = cameraPositionState.isMoving
 
     LaunchedEffect(Unit) {
@@ -80,60 +80,94 @@ fun MapScreen(
             onMapClick = {
                 if (!isMapAnimating && !isMapMoving) {
                     viewModel.selectAccident(null)
+                    viewModel.selectCluster(null)
                 }
             }
         ) {
-            val currentZoom = cameraPositionState.position.zoom
-
-            when {
-                currentZoom < MapConstants.ZOOM_THRESHOLD_GRID -> {
-                    RenderHeatmapGrid(gridData)
+            // 1. 클러스터 (영역 원 + 중심 핀)
+            RenderClusters(
+                clusterAreas = clusterAreas,
+                onClusterPinClick = { cluster ->
+                        viewModel.selectCluster(cluster)
                 }
+            )
 
-                currentZoom >= MapConstants.ZOOM_THRESHOLD_MARKERS -> {
-                    RenderAccidentMarkers(
-                        accidents = accidents,
-                        selectedAccident = selectedAccident,
-                        isMapAnimating = isMapAnimating,
-                        isMapMoving = isMapMoving,
-                        onMarkerClick = { accident ->
-                            if (selectedAccident?.id == accident.id) {
-                                scope.launch {
-                                    isMapAnimating = true
-                                    try {
-                                        cameraPositionState.animate(
-                                            CameraUpdateFactory.newLatLng(LatLng(accident.latitude!!, accident.longitude!!)),
-                                            durationMs = 500
-                                        )
-                                    } finally {
-                                        delay(100)
-                                        isMapAnimating = false
-                                    }
-                                }
-                                return@RenderAccidentMarkers
+            // 2. 개별 포인트 (점 또는 핀)
+            RenderClusteredPoints(
+                clusteredPoints = clusteredPoints,
+                selectedAccident = selectedAccident,
+                isMapAnimating = isMapAnimating,
+                isMapMoving = isMapMoving,
+                onPointClick = { point ->
+                    val accident = point.accident
+                    // 이미 선택된 상태라면 애니메이션만
+                    if (selectedAccident?.id == accident.id) {
+                        scope.launch {
+                            isMapAnimating = true
+                            try {
+                                cameraPositionState.animate(
+                                    CameraUpdateFactory.newLatLng(LatLng(accident.latitude!!, accident.longitude!!)),
+                                    durationMs = 500
+                                )
+                            } finally {
+                                delay(100)
+                                isMapAnimating = false
                             }
+                        }
+                        return@RenderClusteredPoints
+                    }
 
-                            viewModel.selectAccident(accident)
-                            scope.launch {
-                                isMapAnimating = true
-                                try {
-                                    cameraPositionState.animate(
+                    // 선택 변경
+                    viewModel.selectAccident(accident)
+                    scope.launch {
+                        isMapAnimating = true
+                        try {
+                            cameraPositionState.animate(
                                         CameraUpdateFactory.newLatLng(LatLng(accident.latitude!!, accident.longitude!!)),
                                         durationMs = 500
                                     )
-                                } finally {
-                                    delay(100) // 안정화 대기
-                                    isMapAnimating = false
-                                }
-                            }
-                        },
-                        onInfoWindowCloseRequest = { accident ->
-                            if (selectedAccident?.id == accident.id) {
-                                viewModel.selectAccident(null)
-                            }
+                        } finally {
+                            delay(100)
+                            isMapAnimating = false
                         }
-                    )
+                    }
+                },
+                onInfoWindowCloseRequest = { 
+                    viewModel.selectAccident(null)
                 }
+            )
+        }
+        
+        // 범례 오버레이 (우측 상단)
+        if (clusterAreas.isNotEmpty()) {
+            LegendOverlay(
+                clusters = clusterAreas,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 64.dp, end = 16.dp),
+                onClusterClick = { cluster ->
+                    viewModel.selectCluster(cluster)
+                    scope.launch {
+                        cameraPositionState.animate(
+                            CameraUpdateFactory.newLatLngZoom(cluster.center, 14f),
+                            durationMs = 800
+                        )
+                    }
+                }
+            )
+        }
+        
+        // 클러스터 상세 정보창 (화면 중앙 오버레이)
+        if (selectedCluster != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+            ) {
+                ClusterInfoWindow(
+                    cluster = selectedCluster!!,
+                    onClose = { viewModel.selectCluster(null) }
+                )
             }
         }
 
@@ -157,82 +191,99 @@ fun MapScreen(
 }
 
 @Composable
-private fun RenderHeatmapGrid(gridData: List<GridCell>) {
-    if (gridData.isEmpty()) return
+private fun RenderClusters(
+    clusterAreas: List<ClusterArea>,
+    onClusterPinClick: (ClusterArea) -> Unit
+) {
+    clusterAreas.forEach { cluster ->
+        val baseColor = ClusterUtils.getClusterColor(cluster.clusterId)
+        val fillColor = baseColor.copy(alpha = 0.2f)
+        val strokeColor = baseColor.copy(alpha = 0.8f)
+        
+        // 1. 영역 (원)
+        Circle(
+            center = cluster.center,
+            radius = cluster.radius,
+            fillColor = fillColor,
+            strokeColor = strokeColor,
+            strokeWidth = 2f,
+            clickable = false // 영역 클릭 간섭 방지 (핀 클릭 유도)
+        )
 
-    val maxCount = gridData.maxOfOrNull { it.accidentCount } ?: 1
-
-    gridData.forEach { grid ->
-        if (grid.accidentCount > 0) {
-            HeatmapGridCell(grid, maxCount)
-        }
+        // 2. 중심 핀 (Marker) - 정보창은 오버레이로 표시하므로 기본 MarkerInfoWindow는 사용하지 않음
+        val markerState = remember(cluster.clusterId) { MarkerState(position = cluster.center) }
+        
+        Marker(
+            state = markerState,
+            icon = BitmapDescriptorFactory.defaultMarker(ClusterUtils.getMarkerHue(cluster.clusterId)),
+            title = "Cluster ${cluster.clusterId}",
+            onClick = {
+                onClusterPinClick(cluster)
+                true // 기본 InfoWindow 표시 방지
+            }
+        )
     }
 }
 
 @Composable
-private fun HeatmapGridCell(
-    grid: GridCell,
-    maxCount: Int
-) {
-    val intensity = (grid.accidentCount.toFloat() / maxCount).coerceIn(0f, 1f)
-    val gridSize = MapConstants.GRID_SIZE
-
-    val points = listOf(
-        LatLng(grid.latCenter - gridSize, grid.lonCenter - gridSize),
-        LatLng(grid.latCenter - gridSize, grid.lonCenter + gridSize),
-        LatLng(grid.latCenter + gridSize, grid.lonCenter + gridSize),
-        LatLng(grid.latCenter + gridSize, grid.lonCenter - gridSize)
-    )
-
-    val color = calculateHeatmapColor(intensity)
-
-    Polygon(
-        points = points,
-        fillColor = color,
-        strokeColor = color.copy(alpha = 0.8f),
-        strokeWidth = 2f,
-        clickable = false,
-        geodesic = true
-    )
-}
-
-@Composable
-private fun RenderAccidentMarkers(
-    accidents: List<AccidentEntity>,
+private fun RenderClusteredPoints(
+    clusteredPoints: List<ClusteredPoint>,
     selectedAccident: AccidentEntity?,
     isMapAnimating: Boolean,
     isMapMoving: Boolean,
-    onMarkerClick: (AccidentEntity) -> Unit,
+    onPointClick: (ClusteredPoint) -> Unit,
     onInfoWindowCloseRequest: (AccidentEntity) -> Unit
 ) {
-    accidents.forEach { accident ->
-        if (accident.latitude != null && accident.longitude != null) {
-            key(accident.id) {
-                AccidentMarker(
-                    accident = accident, 
-                    isSelected = selectedAccident?.id == accident.id,
-                    isMapAnimating = isMapAnimating,
-                    isMapMoving = isMapMoving,
-                    onMarkerClick = onMarkerClick,
-                    onInfoWindowCloseRequest = onInfoWindowCloseRequest
-                )
+    clusteredPoints.forEach { point ->
+        if (point.accident.latitude != null && point.accident.longitude != null) {
+            key(point.accident.id) {
+                val isSelected = selectedAccident?.id == point.accident.id
+                
+                if (isSelected) {
+                    // 선택된 경우: 핀(Marker)으로 상세 정보 표시
+                    ClusteredAccidentMarker(
+                        point = point,
+                        isSelected = true,
+                        isMapAnimating = isMapAnimating,
+                        isMapMoving = isMapMoving,
+                        onMarkerClick = onPointClick,
+                        onInfoWindowCloseRequest = onInfoWindowCloseRequest
+                    )
+                } else {
+                    // 선택되지 않은 경우: 점(Dot)으로 표시
+                    // 노이즈는 회색, 클러스터는 해당 색상
+                    val color = if (point.isNoise) Color.Gray else ClusterUtils.getClusterColor(point.clusterId)
+                    
+                    Circle(
+                        center = point.position,
+                        radius = 6.0, // 점의 크기 (미터 단위)
+                        fillColor = color,
+                        strokeColor = Color.White,
+                        strokeWidth = 1f,
+                        zIndex = 1.0f,
+                        clickable = true,
+                        onClick = { onPointClick(point) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AccidentMarker(
-    accident: AccidentEntity,
+private fun ClusteredAccidentMarker(
+    point: ClusteredPoint,
     isSelected: Boolean,
     isMapAnimating: Boolean,
     isMapMoving: Boolean,
-    onMarkerClick: (AccidentEntity) -> Unit,
+    onMarkerClick: (ClusteredPoint) -> Unit,
     onInfoWindowCloseRequest: (AccidentEntity) -> Unit
 ) {
-    val markerColor = getMarkerColorForAccidentType(accident.accidentType)
-    val position = LatLng(accident.latitude!!, accident.longitude!!)
-    val markerState = remember(accident.id) { MarkerState(position = position) }
+    val markerHue = ClusterUtils.getMarkerHue(point.clusterId)
+    val zIndex = 2.0f // 선택된 마커는 점보다 위에
+    
+    val position = point.position
+    val markerState = remember(point.accident.id) { MarkerState(position = position) }
 
     LaunchedEffect(isSelected, isMapAnimating, isMapMoving) {
         if (isSelected) {
@@ -247,20 +298,22 @@ private fun AccidentMarker(
 
     MarkerInfoWindow(
         state = markerState,
-        icon = BitmapDescriptorFactory.defaultMarker(markerColor),
-        title = accident.accidentType ?: "사고",
-        snippet = formatAccidentSnippet(accident),
+        icon = BitmapDescriptorFactory.defaultMarker(markerHue),
+        zIndex = zIndex,
+        title = point.accident.accidentType ?: "사고",
+        snippet = formatAccidentSnippet(point.accident),
         onClick = {
-            onMarkerClick(accident)
+            onMarkerClick(point)
             true
         },
         onInfoWindowClick = {
-            onInfoWindowCloseRequest(accident)
+            onInfoWindowCloseRequest(point.accident)
         },
         onInfoWindowClose = {
+             onInfoWindowCloseRequest(point.accident)
         }
     ) { marker ->
-        CustomInfoWindow(accident = accident, marker = marker)
+        CustomInfoWindow(accident = point.accident, onClose = { onInfoWindowCloseRequest(point.accident) })
     }
 }
 
@@ -272,59 +325,6 @@ object MapConstants {
     const val ZOOM_THRESHOLD_MARKERS = 12f
     const val GRID_SIZE = 0.025
     const val DEBOUNCE_DELAY_MS = 500L
-}
-
-private fun calculateHeatmapColor(intensity: Float): Color {
-    return when {
-        intensity < 0.25f -> {
-            val ratio = intensity / 0.25f
-            Color(
-                red = (102 + (255 - 102) * ratio) / 255f,
-                green = (225 + (255 - 225) * ratio) / 255f,
-                blue = 0f,
-                alpha = 0.5f + intensity * 0.3f
-            )
-        }
-
-        intensity < 0.5f -> {
-            val ratio = (intensity - 0.25f) / 0.25f
-            Color(
-                red = 1f,
-                green = 1f - (ratio * 0.35f),
-                blue = 0f,
-                alpha = 0.5f + intensity * 0.3f
-            )
-        }
-
-        intensity < 0.75f -> {
-            val ratio = (intensity - 0.5f) / 0.25f
-            Color(
-                red = 1f,
-                green = 0.65f - (ratio * 0.65f),
-                blue = 0f,
-                alpha = 0.6f + intensity * 0.3f
-            )
-        }
-
-        else -> {
-            Color(
-                red = 1f,
-                green = 0f,
-                blue = 0f,
-                alpha = 0.7f + intensity * 0.2f
-            )
-        }
-    }
-}
-
-private fun getMarkerColorForAccidentType(accidentType: String?): Float {
-    return when (accidentType?.uppercase()) {
-        "차대사람" -> BitmapDescriptorFactory.HUE_RED
-        "차대차" -> BitmapDescriptorFactory.HUE_ORANGE
-        "차량단독" -> BitmapDescriptorFactory.HUE_YELLOW
-        "철길건널목" -> BitmapDescriptorFactory.HUE_MAGENTA
-        else -> BitmapDescriptorFactory.HUE_AZURE
-    }
 }
 
 // 마커 스니펫 포맷팅
